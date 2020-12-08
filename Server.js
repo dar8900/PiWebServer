@@ -42,18 +42,21 @@ async function readTemp()
     });
 }
 
-
-http.createServer((req, res) => {
-    
-    async function showTemp()
+function Response(req, res)
+{
+    let ReqMethod, Host, HttpPage;
+    ReqMethod = req.method;
+    Host = req.headers.host;
+    HttpPage = "Ciao mondo, ho ricevuto una richiesta di tipo " + ReqMethod + " da " + Host;
+    res.writeHead(200);
+    if(res.write(HttpPage))
     {
-        let temp;
-        temp = await readTemp();            
-        console.log(temp);
-        return temp;
+        res.end(()=>{console.log("Scrittura finita");});
     }
-    
-    res.writeHead(200, {'Content-Type': 'text/plain'});
-    res.end("Cpu temp: " + showTemp() + "°C");
-
-}).listen(SERVER_PORT);
+    else
+    {
+        res.end(()=>{console.log("Scrittura errata");});
+    }
+}
+const NewServer = http.createServer(Response);
+NewServer.listen(SERVER_PORT);
