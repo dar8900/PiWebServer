@@ -1,62 +1,97 @@
+const http = require('http');
+const url = require('url');
+const Os = require('os');
+const QueryStr = require('querystring');
+const SysCall = require('./SystemCall');
 
-class Error 
+
+class PiFile
 {
-    constructor(CodeNumber, Motivation) 
-    {
-        this.CodeNumber = CodeNumber;
-        this.Motivation = Motivation;
-    }
-    getErrorObject() 
-    {
-        var error = {en: this.CodeNumber, why: this.Motivation};
-        return error;
-    }
-}
-const TEMP_SCRIPT = './TempScript.sh'
-const SERVER_PORT = 1989
+	constructor(FileName, FilePath)
+	{
+		this.fileName = FileName;
+		this.filePath = FilePath;
+	}
+	get path()
+	{
+		return this.filePath;
+	}
 
-var http = require('http');
-
-function getTemp()
-{
-    console.log("GetTemp Started");
-    return new Promise((resolve, reject) =>{
-        const ScriptRun = require('child_process');
-        const TempOut = ScriptRun.spawn(TEMP_SCRIPT);
-        TempOut.stdout.on("data", (data) => {
-            resolve((parseFloat(data)/1000.0).toFixed(1).toString() + "°C");
-        });
-        TempOut.on("error", (err) => {
-            let newError = new Error(1, "Script Error")
-            resolve(newError.getErrorObject());
-        });
-    });
 }
 
-async function readTemp()
+
+const RootPath = "/home/deo/Homeshare/PiserverJS/";
+const LoginPage = new PiFile("LoginPage", RootPath + "HtmlPages/loginPage.html");
+const NotFoundPage = new PiFile("NotFound", RootPath + "HtmlPages/notFound.html");
+const LoginTable = new PiFile("Logintable", RootPath + "HtmlPages/res/login_table.txt")
+
+const SERVER_PORT = 1989	
+
+function CollectPostReq(Request)
 {
-    console.log("ReadTemp Started");
-    let tempReaded = await getTemp();
-    return new Promise((resolve, reject) =>{
-        resolve(tempReaded);
-    });
+	return new Promise((resolve, reject) => {
+		let body = '';
+		let PostQueryParsed;
+		Request.on('data', chunk => {
+			body += chunk.toString();
+		});
+		Request.on('end', () => {
+			resolve(QueryStr.parse(body));
+		});
+	});
 }
 
-function Response(req, res)
+async function ValidateLogin_async(Username, Passwd)
 {
-    let ReqMethod, Host, HttpPage;
-    ReqMethod = req.method;
-    Host = req.headers.host;
-    HttpPage = "Ciao mondo, ho ricevuto una richiesta di tipo " + ReqMethod + " da " + Host;
-    res.writeHead(200);
-    if(res.write(HttpPage))
-    {
-        res.end(()=>{console.log("Scrittura finita");});
-    }
-    else
-    {
-        res.end(()=>{console.log("Scrittura errata");});
-    }
+	let LogInFile = await SysCall.getFileContent(LoginTable.path);
+	console.log(LogInFile.toString().split(':'));
 }
-const NewServer = http.createServer(Response);
+
+async function SendResponse(req, res)
+{
+	let HttpPage;
+	// let temp = await SysCall.getTemp();
+	// let date = await SysCall.getPiDate();
+	let PageSelected = url.parse(req.url).pathname;
+	let Query = url.parse(req.url, true).query;
+	console.log("Page sel:");
+	console.log(PageSelected);
+	if(req.method == 'GET')
+	{
+		if(PageSelected == '/')
+		{
+			HttpPage = await SysCall.getFileContent(LoginPage.path);
+		}
+		else if(PageSelected == '/favicon.ico')
+		{
+			res.writeHead(200, {'Content-Type': 'image/x-icon'} );
+			res.end();
+			return;
+		}
+		else
+		{
+			res.writeHead(404)
+			HttpPage = await SysCall.getFileContent(NotFoundPage.path);
+			res.end(HttpPage);
+			return;
+		}
+	}
+	else if(req.method == 'POST')
+	{
+		if(PageSelected == '/login')
+		{
+			let PostReq = await CollectPostReq(req);
+			ValidateLogin_async("wqewq", "adasd");
+			HttpPage = "Welcome";
+		}
+	}
+	res.writeHead(200);
+	res.write(HttpPage);
+    res.end();
+}
+const NewServer = http.createServer();
 NewServer.listen(SERVER_PORT);
+NewServer.on('request', SendResponse);
+
+// setInterval(callback, delay[, ...args])
+// Os.uptime(); in sec
