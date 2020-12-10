@@ -82,7 +82,7 @@ exports.getFileContent = function (FilePath)
             else
             {
                 FileSystem.readFile(FilePath, (err, fileData) =>{
-                    resolve(fileData);
+                    resolve(fileData.toString());
                 })
             }
         });
