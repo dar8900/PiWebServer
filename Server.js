@@ -1,59 +1,198 @@
 const http = require('http');
 const url = require('url');
 const Os = require('os');
+const Path = require('path');
+
 const QueryStr = require('querystring');
 const SysCall = require('./SystemCall');
 
 
-class PiFile
+class PiUser
 {
-	constructor(FileName, FilePath)
+	constructor(Userinfo)
 	{
-		this.fileName = FileName;
-		this.filePath = FilePath;
+		this.userinfo = Userinfo;
 	}
-	get path()
+	async sessionUserValidation()
 	{
-		return this.filePath;
+		let LogInFile = await SysCall.getFileContent(LoginTable);
+		let NamePasswd = [];
+		let SingleElements = [];
+		let UsersAndPassw = {username:"", passwd:""};
+		let ReloadObj = false;
+		let ValidateLogin = false;
+		LogInFile = LogInFile.replace('\r', '');
+		NamePasswd = LogInFile.split('\n');
+		for(let i = 0; i < NamePasswd.length; i++)
+		{
+			let TempArray = NamePasswd[i].split(':');
+			for(let j = 0; j < TempArray.length; j++)
+			{
+				SingleElements.push(TempArray[j]);
+			}
+		}
+		SingleElements = SingleElements.map((item) => item = item.replace('\r', ''));
+		// console.log(SingleElements);
+		NamePasswd = [];
+		for(let i = 0; i < SingleElements.length; i++)
+		{
+			if(ReloadObj)
+				UsersAndPassw = {username:"", passwd:""};
+			if(i % 2 == 0)
+			{
+				UsersAndPassw.username = SingleElements[i];
+				ReloadObj = false;
+			}
+			else
+			{
+				UsersAndPassw.passwd = SingleElements[i];
+				NamePasswd.push(UsersAndPassw);
+				ReloadObj = true;
+			}
+		}
+		for(let i = 0; i < NamePasswd.length; i++)
+		{
+			if(NamePasswd[i].username == this.userinfo.username && NamePasswd[i].passwd == this.userinfo.passwd)
+			{
+				ValidateLogin = true;
+				ActualLoggedUser = NamePasswd[i];
+				break;
+			}
+		}
+		return Promise.resolve(ValidateLogin);
 	}
+}
+
+class PiSessions
+{
+	constructor()
+	{
+		this.sessions = [];
+		this.sessionsQueue = [];
+		this.timeout = 30000;
+		this.logged = [];
+	}
+	sessionTimeout(callback)
+	{
+		setTimeout(callback, this.timeout);
+	}
+	findSessionIndex(SessionUser)
+	{
+		let SessionIndex = undefined;
+		for(let i = 0; i < this.sessions.length; i++)
+		{
+			if(SessionUser.username.toString() == this.sessionsQueue[i].toString())
+			{
+				SessionIndex = i;
+				break;
+			}
+		}
+		return SessionIndex;
+	}
+	async addSession(NewSessionUser)
+	{
+		let Log = "Sessione per l'utente " + NewSessionUser.username.toString() + " non aggiunta";
+		let Ret = true;
+		let OldUser = false;
+		let NewSession = new PiUser(NewSessionUser);
+		for(let i = 0; i < this.sessions.length; i++)
+		{
+			if(NewSessionUser.username.toString() == this.sessionsQueue[i] && this.logged[i] == true)
+			{
+				Ret = true;
+				break;
+			}
+			else if(NewSessionUser.username.toString() == this.sessionsQueue[i] && this.logged[i] == false)
+			{
+				OldUser = true;
+				break;
+			}
+		}
+		if(Ret)
+		{
+			let RightCredentials = await NewSession.sessionUserValidation();
+			if(RightCredentials && !OldUser)
+			{
+				this.sessions.push(NewSession);
+				this.sessionsQueue.push(NewSessionUser.username.toString());
+				this.logged.push(true);
+				this.sessionTimeout(() => {
+					let Index = this.findSessionIndex(NewSessionUser);
+					if(Index != undefined)
+					{
+						this.logged[Index] = false;
+						console.log("Sessione per l'utente " + this.sessionsQueue[Index].toString() + " scaduta");
+					}
+				});
+				Log = "Sessione per l'utente " + NewSessionUser.username.toString() + " aggiunta e login validato";
+				Ret = true;
+			}
+			else if(RightCredentials && OldUser)
+			{
+				this.sessionTimeout(() => {
+					let Index = this.findSessionIndex(NewSessionUser);
+					if(Index != undefined)
+					{
+						this.logged[Index] = false;
+						console.log("Sessione per l'utente " + this.sessionsQueue[Index].toString() + " scaduta");
+					}
+				});
+				let Index = this.findSessionIndex(NewSessionUser)
+				this.logged[Index] = true;
+				Log = "Sessione per l'utente " + NewSessionUser.username.toString() + " validata e aggiornata";
+				Ret = true;
+			}
+			else
+			{
+				Ret = false;
+				Log = "Sessione per l'utente " + NewSessionUser.username.toString() + " non aggiunta e login non validato";
+			}
+		}
+		console.log(Log);
+		return Promise.resolve(Ret);
+	}
+	delSession(OldSessionUser)
+	{
+		let Log = "Sessione per l'utente " + OldSessionUser.username.toString() + " non cancellata";
+		let Ret = false;
+		let Index = this.findSessionIndex(OldSessionUser);
+		if(Index != undefined)
+		{
+			if(Index == 0)
+			{
+				this.sessions.pop();
+				this.sessionsQueue.pop();
+				this.logged.pop();
+			}
+			else
+			{
+				this.sessions = this.sessions.splice(Index, 1);
+				this.sessionsQueue = this.sessionsQueue.splice(Index ,1);
+				this.logged = this.logged.splice(Index, 1);
+			}
+			Log = "Sessione per l'utente " + OldSessionUser.username.toString() + " cancellata";
+			Ret = true;
+		}
+		console.log(Log);
+		return Ret;
+	}
+
 
 }
 
-class PiSession
-{
-	constructor(UserInfo, Timeout)
-	{
-		this.userinfo = UserInfo;
-		this.timeout = Timeout;
-		this.logged = false;
-	}
-	set logging(IsLogging)
-	{
-		this.logged = IsLogging;
-	}
-	get isLogged()
-	{
-		return this.logged;
-	}
-	set newTimeout(NewTimeout)
-	{
-		this.timeout = NewTimeout;
-	}
+const SERVER_PORT = 1989
+const LoginPage = Path.join(__dirname, 'HtmlPages', 'loginPage.html');
+const NotFoundPage = Path.join(__dirname, 'HtmlPages', 'notFound.html');
+const NotImplementedPage = Path.join(__dirname, 'HtmlPages', 'reqUnknown.hmtl');
+const IndexPage = Path.join(__dirname, 'HtmlPages', 'index.html');
+const LoginTable = Path.join(__dirname, 'HtmlPages/res', 'login_table.txt');
 
-}
+const UsersSessions = new PiSessions();
 
 
-const RootPath = "/home/deo/Homeshare/PiserverJS/";
-const LoginPage = new PiFile("LoginPage", RootPath + "HtmlPages/loginPage.html");
-const NotFoundPage = new PiFile("NotFound", RootPath + "HtmlPages/notFound.html");
-const IndexPage = new PiFile("Index", RootPath + "HtmlPages/index.html")
+// const LoginTable = new PiFile("Logintable", RootPath + "HtmlPages/res/login_table.txt")
 
-
-
-
-const LoginTable = new PiFile("Logintable", RootPath + "HtmlPages/res/login_table.txt")
-
-const SERVER_PORT = 1989	
+	
 
 var ActualLoggedUser = {username:"", passwd:""};
 module.exports.user = ActualLoggedUser.username;
@@ -72,52 +211,6 @@ function CollectPostReq(Request)
 	});
 }
 
-async function ValidateLogin_async(Username, Passwd)
-{
-	let LogInFile = await SysCall.getFileContent(LoginTable.path);
-	let NamePasswd = [];
-	let SingleElements = [];
-	let UsersAndPassw = {username:"", passwd:""};
-	let ReloadObj = false;
-	let ValidateLogin = false;
-	LogInFile = LogInFile.replace('\r', '');
-	NamePasswd = LogInFile.split('\n');
-	for(let i = 0; i < NamePasswd.length; i++)
-	{
-		let TempArray = NamePasswd[i].split(':');
-		for(let j = 0; j < TempArray.length; j++)
-		{
-			SingleElements.push(TempArray[j]);
-		}
-	}
-	NamePasswd = [];
-	for(let i = 0; i < SingleElements.length; i++)
-	{
-		if(ReloadObj)
-			UsersAndPassw = {username:"", passwd:""};
-		if(i % 2 == 0)
-		{
-			UsersAndPassw.username = SingleElements[i];
-			ReloadObj = false;
-		}
-		else
-		{
-			UsersAndPassw.passwd = SingleElements[i];
-			NamePasswd.push(UsersAndPassw);
-			ReloadObj = true;
-		}
-	}
-	for(let i = 0; i < NamePasswd.length; i++)
-	{
-		if(NamePasswd[i].username == Username && NamePasswd[i].passwd == Passwd)
-		{
-			ValidateLogin = true;
-			ActualLoggedUser = NamePasswd[i];
-			break;
-		}
-	}
-	return Promise.resolve(ValidateLogin);
-}
 
 async function SendResponse(req, res)
 {
@@ -126,54 +219,68 @@ async function SendResponse(req, res)
 	// let date = await SysCall.getPiDate();
 	let PageSelected = url.parse(req.url).pathname;
 	let Query = url.parse(req.url, true).query;
+
 	console.log("Page sel:");
-	console.log(PageSelected);
+	console.log(req.url);
+	console.log("Req method:");
+	console.log(req.method);
+	// console.log(UsersSessions);
 	if(req.method == 'GET')
 	{
-		if(PageSelected == '/' || PageSelected == '/goto_index')
+		if(PageSelected != '/favicon.ico')
 		{
-			HttpPage = await SysCall.getFileContent(LoginPage.path);
+			HttpPage = await SysCall.getFileContent(LoginPage);
 		}
-		else if(PageSelected == '/favicon.ico')
+		else
 		{
 			res.writeHead(200, {'Content-Type': 'image/x-icon'} );
 			res.end();
 			return;
 		}
-		else
-		{
-			res.writeHead(404)
-			HttpPage = await SysCall.getFileContent(NotFoundPage.path);
-			res.end(HttpPage);
-			return;
-		}
+
 	}
 	else if(req.method == 'POST')
 	{
-		if(PageSelected == '/goto_index')
+		if(PageSelected != '/favicon.ico')
 		{
 			let PostReq = await CollectPostReq(req);
-			let Validation = await ValidateLogin_async(PostReq.username, PostReq.passwd);
-			if(Validation)
+			let IncomingUserSession = new PiUser(PostReq);
+			let UserAmmited = await UsersSessions.addSession(IncomingUserSession.userinfo);
+			if(UserAmmited)
 			{
-				console.log("Login validato");
-				HttpPage = await SysCall.getFileContent(IndexPage.path);
+				if(PageSelected === '/index.html')
+				{
+					console.log(IndexPage);
+					HttpPage = await SysCall.getFileContent(IndexPage);
+				}
+				else
+				{
+					HttpPage = await SysCall.getFileContent(NotFoundPage);
+					res.writeHead(404, {'Content-Type': 'image/x-icon'} );
+					res.end(HttpPage);
+					return;
+				}
 			}
 			else
 			{
-				console.log("Login invalido");
-				HttpPage = await SysCall.getFileContent(LoginPage.path);
+				HttpPage = await SysCall.getFileContent(LoginPage);
 			}
+		}
+		else
+		{
+			res.writeHead(200, {'Content-Type': 'image/x-icon'} );
+			res.end();
+			return;
 		}
 	}
 	else
 	{
-		console.log("Unknown request type");
-		res.writeHead(500);
-		res.end("Req unknown");
+		HttpPage = await SysCall.getFileContent(NotImplementedPage);
+		res.writeHead(501, {'Content-Type': 'text/html'});
+		res.end(HttpPage);
 		return;
 	}
-	res.writeHead(200);
+	res.writeHead(200, {'Content-Type': 'text/html'});
 	res.write(HttpPage);
 	res.end();
 	return;
