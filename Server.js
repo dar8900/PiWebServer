@@ -1,61 +1,36 @@
-const http = require('http');
-const url = require('url');
-const Os = require('os');
-const Path = require('path');
-
-const QueryStr = require('querystring');
+const express = require('express');
+const path = require('path');
+const uuid = require('uuid');
+const exphbs = require('express-handlebars');
 const SysCall = require('./SystemCall');
+const Users = require('./Res/loginTable');
 
+const EnableLog = false;
+
+function DbgLog(DbgMsg)
+{
+	if(EnableLog)
+	{
+		console.log(DbgMsg);
+	}
+}
 
 class PiUser
 {
 	constructor(Userinfo)
 	{
 		this.userinfo = Userinfo;
+		this.userinfo.userID = '';
 	}
 	async sessionUserValidation()
 	{
-		let LogInFile = await SysCall.getFileContent(LoginTable);
-		let NamePasswd = [];
-		let SingleElements = [];
-		let UsersAndPassw = {username:"", passwd:""};
-		let ReloadObj = false;
 		let ValidateLogin = false;
-		LogInFile = LogInFile.replace('\r', '');
-		NamePasswd = LogInFile.split('\n');
-		for(let i = 0; i < NamePasswd.length; i++)
+		for(let i = 0; i < Users.length; i++)
 		{
-			let TempArray = NamePasswd[i].split(':');
-			for(let j = 0; j < TempArray.length; j++)
-			{
-				SingleElements.push(TempArray[j]);
-			}
-		}
-		SingleElements = SingleElements.map((item) => item = item.replace('\r', ''));
-		// console.log(SingleElements);
-		NamePasswd = [];
-		for(let i = 0; i < SingleElements.length; i++)
-		{
-			if(ReloadObj)
-				UsersAndPassw = {username:"", passwd:""};
-			if(i % 2 == 0)
-			{
-				UsersAndPassw.username = SingleElements[i];
-				ReloadObj = false;
-			}
-			else
-			{
-				UsersAndPassw.passwd = SingleElements[i];
-				NamePasswd.push(UsersAndPassw);
-				ReloadObj = true;
-			}
-		}
-		for(let i = 0; i < NamePasswd.length; i++)
-		{
-			if(NamePasswd[i].username == this.userinfo.username && NamePasswd[i].passwd == this.userinfo.passwd)
+			if(Users[i].username == this.userinfo.username && Users[i].passwd == this.userinfo.passwd)
 			{
 				ValidateLogin = true;
-				ActualLoggedUser = NamePasswd[i];
+				this.userinfo.userID = uuid.v4();
 				break;
 			}
 		}
@@ -68,9 +43,9 @@ class PiSessions
 	constructor()
 	{
 		this.sessions = [];
-		this.sessionsQueue = [];
-		this.timeout = 30000;
-		this.logged = [];
+		// this.sessionID = [];
+		this.timeout = 5000;
+		// this.logged = [];
 	}
 	sessionTimeout(callback)
 	{
@@ -81,7 +56,7 @@ class PiSessions
 		let SessionIndex = undefined;
 		for(let i = 0; i < this.sessions.length; i++)
 		{
-			if(SessionUser.username.toString() == this.sessionsQueue[i].toString())
+			if(SessionUser.username.toString() == this.sessions[i].userinfo.username)
 			{
 				SessionIndex = i;
 				break;
@@ -95,60 +70,72 @@ class PiSessions
 		let Ret = true;
 		let OldUser = false;
 		let NewSession = new PiUser(NewSessionUser);
-		for(let i = 0; i < this.sessions.length; i++)
-		{
-			if(NewSessionUser.username.toString() == this.sessionsQueue[i] && this.logged[i] == true)
-			{
-				Ret = true;
-				break;
-			}
-			else if(NewSessionUser.username.toString() == this.sessionsQueue[i] && this.logged[i] == false)
-			{
-				OldUser = true;
-				break;
-			}
-		}
+		let GoOn = false, InsertNewSession = true;
 		if(Ret)
 		{
-			let RightCredentials = await NewSession.sessionUserValidation();
-			if(RightCredentials && !OldUser)
+			if(this.sessions.length != 0)
 			{
-				this.sessions.push(NewSession);
-				this.sessionsQueue.push(NewSessionUser.username.toString());
-				this.logged.push(true);
-				this.sessionTimeout(() => {
-					let Index = this.findSessionIndex(NewSessionUser);
-					if(Index != undefined)
+				for(let i = 0; i < this.sessions.length; i++)
+				{
+					if(NewSession.userinfo.username == this.sessions[i].userinfo.username)
 					{
-						this.logged[Index] = false;
-						console.log("Sessione per l'utente " + this.sessionsQueue[Index].toString() + " scaduta");
+						if(this.sessions[i].userinfo.userID != '')
+						{
+							GoOn = true;
+							break;
+						}
+						else
+						{
+							InsertNewSession = false;
+							break;
+						}
 					}
-				});
-				Log = "Sessione per l'utente " + NewSessionUser.username.toString() + " aggiunta e login validato";
-				Ret = true;
+				}
 			}
-			else if(RightCredentials && OldUser)
+			if(!GoOn)
 			{
-				this.sessionTimeout(() => {
-					let Index = this.findSessionIndex(NewSessionUser);
-					if(Index != undefined)
+				let RightCredentials = await NewSession.sessionUserValidation();
+				if(!InsertNewSession)
+				{
+					this.sessions[this.findSessionIndex(NewSessionUser)].userinfo.userID = NewSession.userinfo.userID;
+				}
+				if(RightCredentials)
+				{
+					if(InsertNewSession)
 					{
-						this.logged[Index] = false;
-						console.log("Sessione per l'utente " + this.sessionsQueue[Index].toString() + " scaduta");
+						DbgLog("Sessione inserita nella lista");
+						this.sessions.push(NewSession);
 					}
-				});
-				let Index = this.findSessionIndex(NewSessionUser)
-				this.logged[Index] = true;
-				Log = "Sessione per l'utente " + NewSessionUser.username.toString() + " validata e aggiornata";
-				Ret = true;
-			}
-			else
-			{
-				Ret = false;
-				Log = "Sessione per l'utente " + NewSessionUser.username.toString() + " non aggiunta e login non validato";
+					// this.logged.push(true);
+					this.sessionTimeout(() => {
+						let Index = this.findSessionIndex(NewSessionUser);
+						if(Index != undefined)
+						{
+							// this.logged[Index] = false;
+							DbgLog("Sessione per l'utente " + this.sessions[Index].userinfo.username + " scaduta");
+							this.sessions[Index].userinfo.userID = '';
+						}
+					});
+					let Index = this.findSessionIndex(NewSessionUser);
+					if(InsertNewSession)
+					{
+						Log = "Sessione per l'utente " + this.sessions[Index].userinfo.username + " aggiunta e login validato\n ";
+						Log += "Il nuovo ID vale : " + this.sessions[Index].userinfo.userID;
+					}
+					else
+					{
+						Log = "Sessione per l'utente " + this.sessions[Index].userinfo.username + " aggiornata";
+					}
+					Ret = true;
+				}
+				else
+				{
+					Ret = false;
+					Log = "Sessione per l'utente " + NewSessionUser.username + " non aggiunta e login non validato";
+				}
 			}
 		}
-		console.log(Log);
+		DbgLog(Log);
 		return Promise.resolve(Ret);
 	}
 	delSession(OldSessionUser)
@@ -161,133 +148,63 @@ class PiSessions
 			if(Index == 0)
 			{
 				this.sessions.pop();
-				this.sessionsQueue.pop();
-				this.logged.pop();
 			}
 			else
 			{
 				this.sessions = this.sessions.splice(Index, 1);
-				this.sessionsQueue = this.sessionsQueue.splice(Index ,1);
-				this.logged = this.logged.splice(Index, 1);
 			}
 			Log = "Sessione per l'utente " + OldSessionUser.username.toString() + " cancellata";
 			Ret = true;
 		}
-		console.log(Log);
+		DbgLog(Log);
 		return Ret;
 	}
 
 
 }
 
-const SERVER_PORT = 1989
-const LoginPage = Path.join(__dirname, 'HtmlPages', 'loginPage.html');
-const NotFoundPage = Path.join(__dirname, 'HtmlPages', 'notFound.html');
-const NotImplementedPage = Path.join(__dirname, 'HtmlPages', 'reqUnknown.hmtl');
-const IndexPage = Path.join(__dirname, 'HtmlPages', 'index.html');
-const LoginTable = Path.join(__dirname, 'HtmlPages/res', 'login_table.txt');
+const SERVER_PORT = process.env.PORT || 1989;
 
 const UsersSessions = new PiSessions();
 
+const piApp = express();
 
-// const LoginTable = new PiFile("Logintable", RootPath + "HtmlPages/res/login_table.txt")
+// Handlebars Middleware
+piApp.engine('handlebars', exphbs());
+piApp.set('view engine', 'handlebars');
 
-	
+// Body Parser Middleware
+piApp.use(express.json());
+piApp.use(express.urlencoded({ extended: false }));
 
-var ActualLoggedUser = {username:"", passwd:""};
-module.exports.user = ActualLoggedUser.username;
-
-function CollectPostReq(Request)
-{
-	return new Promise((resolve, reject) => {
-		let body = '';
-		let PostQueryParsed;
-		Request.on('data', chunk => {
-			body += chunk.toString();
-		});
-		Request.on('end', () => {
-			resolve(QueryStr.parse(body));
-		});
-	});
-}
+// Homepage Route
+piApp.get('/*', (req, res) =>
+  res.render('login', {
+    title: 'Pi Server Login'
+  })
+);
 
 
-async function SendResponse(req, res)
-{
-	let HttpPage;
-	// let temp = await SysCall.getTemp();
-	// let date = await SysCall.getPiDate();
-	let PageSelected = url.parse(req.url).pathname;
-	let Query = url.parse(req.url, true).query;
 
-	console.log("Page sel:");
-	console.log(req.url);
-	console.log("Req method:");
-	console.log(req.method);
-	// console.log(UsersSessions);
-	if(req.method == 'GET')
+piApp.post('/index', async(req, res) =>{
+	let LoginReq = req.body;
+	let UserAdmitted = await UsersSessions.addSession(LoginReq);
+	DbgLog(UsersSessions.sessions);
+	if(UserAdmitted)
 	{
-		if(PageSelected != '/favicon.ico')
-		{
-			HttpPage = await SysCall.getFileContent(LoginPage);
-		}
-		else
-		{
-			res.writeHead(200, {'Content-Type': 'image/x-icon'} );
-			res.end();
-			return;
-		}
-
-	}
-	else if(req.method == 'POST')
-	{
-		if(PageSelected != '/favicon.ico')
-		{
-			let PostReq = await CollectPostReq(req);
-			let IncomingUserSession = new PiUser(PostReq);
-			let UserAmmited = await UsersSessions.addSession(IncomingUserSession.userinfo);
-			if(UserAmmited)
-			{
-				if(PageSelected === '/index.html')
-				{
-					console.log(IndexPage);
-					HttpPage = await SysCall.getFileContent(IndexPage);
-				}
-				else
-				{
-					HttpPage = await SysCall.getFileContent(NotFoundPage);
-					res.writeHead(404, {'Content-Type': 'image/x-icon'} );
-					res.end(HttpPage);
-					return;
-				}
-			}
-			else
-			{
-				HttpPage = await SysCall.getFileContent(LoginPage);
-			}
-		}
-		else
-		{
-			res.writeHead(200, {'Content-Type': 'image/x-icon'} );
-			res.end();
-			return;
-		}
+		let Temp = await SysCall.launchSystemScript(SysCall.TempScript);
+		let Date = await SysCall.launchSystemScript(SysCall.DateScript);
+		
+		res.render('index', {
+			title: "Welcome to PiServer!",
+			temperatura: Temp,
+			data:Date
+		})
 	}
 	else
 	{
-		HttpPage = await SysCall.getFileContent(NotImplementedPage);
-		res.writeHead(501, {'Content-Type': 'text/html'});
-		res.end(HttpPage);
-		return;
+		res.redirect('/');
 	}
-	res.writeHead(200, {'Content-Type': 'text/html'});
-	res.write(HttpPage);
-	res.end();
-	return;
-}
-const NewServer = http.createServer();
-NewServer.listen(SERVER_PORT);
-NewServer.on('request', SendResponse);
-
-// setInterval(callback, delay[, ...args])
-// Os.uptime(); in sec
+});
+	
+piApp.listen(SERVER_PORT, () => console.log(`Server started on port ${SERVER_PORT}`));
