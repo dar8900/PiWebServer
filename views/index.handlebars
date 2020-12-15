@@ -5,11 +5,12 @@
             Stato PiServer
         </div>
     </div>
+    <script src="/index.js"></script>
     <div class="row">
         <div class="col text-center border border-dark font-weight-bold">
             Temperatura
         </div>
-        <div class="col text-center border border-dark" id="temp_div">
+        <div class="col text-center border border-dark" id="pi_temp">
             {{temperatura}}
         </div>
     </div>
@@ -17,8 +18,16 @@
         <div class="col text-center border border-dark font-weight-bold">
             Data
         </div>
-        <div class="col text-center border border-dark">
+        <div class="col text-center border border-dark" id="pi_date">
             {{data}}
+        </div>
+    </div>
+        <div class="row">
+        <div class="col text-center border border-dark font-weight-bold" id="user_name">
+            
+        </div>
+        <div class="col text-center border border-dark" id="user_time">
+            
         </div>
     </div>
 </div>
