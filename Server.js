@@ -30,6 +30,7 @@ class PiSessions
 		this.sessions = [];
 		this.timeout = SESSION_TIMEOUT;
 		this.sessionSecondCounter = []; //SESSION_TIMEOUT / 1000;
+		this.sessionTimeoutDesc = [];
 		this.sessionIntervalDesc = [];
 	}
 	sessionTimeout(callback)
@@ -82,113 +83,138 @@ class PiSessions
 		{
 			Log = "Sessione per l'utente \"" + NewSessionUser.username.toString() + "\" non aggiunta";
 		}
-		let Ret = true;
-		let OldUser = false;
+		let UserAdded = true;
 		let NewSession = new PiUser(NewSessionUser, NewUserIP);
-		let GoOn = false, InsertNewSession = true;
-		if(Ret)
+		let GoOn = false, DeleteOldSession = false;
+
+		if(this.sessions.length != 0)
 		{
-			if(this.sessions.length != 0)
+			for(let i = 0; i < this.sessions.length; i++)
 			{
-				for(let i = 0; i < this.sessions.length; i++)
+				if(NewSession.userinfo.username == this.sessions[i].userinfo.username)
 				{
-					if(NewSession.userinfo.username == this.sessions[i].userinfo.username)
+					if(this.sessions[i].userinfo.userID != '')
 					{
-						if(this.sessions[i].userinfo.userID != '')
-						{
-							GoOn = true;
-							break;
-						}
-						else
-						{
-							InsertNewSession = false;
-							break;
-						}
-					}
-				}
-			}
-			if(!GoOn)
-			{
-				let RightCredentials = await NewSession.sessionUserValidation(NewUserIP);
-				if(!InsertNewSession)
-				{
-					this.sessions[this.findSessionIndex(NewSessionUser)].userinfo.userID = NewSession.userinfo.userID;
-					this.sessionSecondCounter[this.findSessionIndex(NewSessionUser)] = SESSION_TIMEOUT / 1000;
-				}
-				if(RightCredentials)
-				{
-					if(InsertNewSession)
-					{
-						this.sessions.push(NewSession);
-						this.sessionSecondCounter.push(SESSION_TIMEOUT / 1000);
-						let Index = this.findSessionIndex(NewSessionUser);
-						this.sessionIntervalDesc.push(setInterval(() => {
-							if(this.sessionSecondCounter[Index] > 0)
-							{
-								this.sessionSecondCounter[Index]--;
-							}
-							DbgLog(this.sessionSecondCounter[Index]);
-						}, 1000));
-						DbgLog(`Sessione per l'utente \"${NewSessionUser.username}\" inserita nella lista`);
-					}
-					this.sessionTimeout(() => {
-						let Index = this.findSessionIndex(NewSessionUser);
-						if(Index != undefined)
-						{
-							DbgLog("Sessione per l'utente \"" + this.sessions[Index].userinfo.username + "\" scaduta");
-							this.sessions[Index].userinfo.userID = '';
-							clearInterval(this.sessionIntervalDesc[Index]);
-						}
-					});
-					
-					let Index = this.findSessionIndex(NewSessionUser);
-					if(InsertNewSession)
-					{
-						Log = "Sessione per l'utente \"" + this.sessions[Index].userinfo.username + "\" aggiunta e login validato\n ";
-						Log += "Il nuovo ID vale : " + this.sessions[Index].userinfo.userID;
+						GoOn = true;
+						break;
 					}
 					else
 					{
-						let Index = this.findSessionIndex(NewSessionUser);
-						this.sessionSecondCounter[Index] = SESSION_TIMEOUT / 1000;
-						this.sessionIntervalDesc[Index] = setInterval(() => {
-							if(this.sessionSecondCounter[Index] > 0)
-							{
-								this.sessionSecondCounter[Index]--;
-							}
-							DbgLog(this.sessionSecondCounter[Index]);
-						}, 1000);
-						
-						Log = "Sessione per l'utente \"" + this.sessions[Index].userinfo.username + "\" aggiornata";
+						DeleteOldSession = true;
+						break;
 					}
-					Ret = true;
+				}
+			}
+		}
+		if(!GoOn)
+		{
+			let RightCredentials = false;
+			if(DeleteOldSession)
+			{
+				this.delSession(NewSessionUser);
+			}
+			else
+			{
+				RightCredentials = await NewSession.sessionUserValidation(NewUserIP);
+			}
+			if(RightCredentials)
+			{
+				this.sessions.push(NewSession);
+				this.sessionSecondCounter.push(SESSION_TIMEOUT / 1000);
+				let Index = this.findSessionIndex(NewSessionUser);
+				this.sessionIntervalDesc.push(setInterval(() => {
+					if(this.sessionSecondCounter[Index] > 0)
+					{
+						this.sessionSecondCounter[Index]--;
+					}
+					DbgLog(this.sessionSecondCounter[Index]);
+				}, 1000));
+				
+				
+				this.sessionTimeoutDesc.push(setTimeout(() => {
+					if(Index != undefined)
+					{
+						DbgLog("Sessione per l'utente \"" + this.sessions[Index].userinfo.username + "\" scaduta");
+						this.sessions[Index].userinfo.userID = '';
+						clearInterval(this.sessionIntervalDesc[Index]);
+					}
+				}, this.timeout));
+
+				Log = "Sessione per l'utente \"" + this.sessions[Index].userinfo.username + "\" aggiunta e login validato\n ";
+				Log += "Il nuovo ID vale : " + this.sessions[Index].userinfo.userID;
+
+				UserAdded = true;
+			}
+			else
+			{
+				UserAdded = false;
+				if(DeleteOldSession)
+				{
+					Log = "Sessione per l'utente \"" + NewSessionUser.username + "\" è da aggiornare";
 				}
 				else
 				{
-					Ret = false;
 					Log = "Sessione per l'utente \"" + NewSessionUser.username + "\" non aggiunta e login non validato";
 				}
 			}
 		}
+		else
+		{
+			UserAdded = true;
+			let Index = this.findSessionIndex(NewSessionUser);
+			this.sessionSecondCounter[Index] = SESSION_TIMEOUT / 1000;
+			clearInterval(this.sessionIntervalDesc[Index]);
+			clearTimeout(this.sessionTimeoutDesc[Index]);
+
+			this.sessionTimeoutDesc[Index] = setTimeout(() => {
+				// let Index = this.findSessionIndex(NewSessionUser);
+				if(Index != undefined)
+				{
+					DbgLog("Sessione per l'utente \"" + this.sessions[Index].userinfo.username + "\" scaduta");
+					this.sessions[Index].userinfo.userID = '';
+					clearInterval(this.sessionIntervalDesc[Index]);
+				}
+			}, this.timeout);
+
+			this.sessionIntervalDesc[Index] = setInterval(() => {
+				if(this.sessionSecondCounter[Index] > 0)
+				{
+					this.sessionSecondCounter[Index]--;
+				}
+				DbgLog(this.sessionSecondCounter[Index]);
+			}, 1000);
+			
+			Log = "Sessione per l'utente \"" + this.sessions[Index].userinfo.username + "\" aggiornata";
+		}
 		DbgLog(Log);
-		return Promise.resolve(Ret);
+		return Promise.resolve(UserAdded);
 	}
 	delSession(OldSessionUser)
 	{
-		let Log = "Sessione per l'utente " + OldSessionUser.username.toString() + " non cancellata";
+		let Log = "Sessione per l'utente \"" + OldSessionUser.username.toString() + "\" non cancellata";
 		let Ret = false;
 		let Index = this.findSessionIndex(OldSessionUser);
 		if(Index != undefined)
 		{
-			if(Index == 0)
+			DbgLog(`Indice da cancellare ${Index}`);
+			clearInterval(this.sessionIntervalDesc[Index]);
+			clearTimeout(this.sessionTimeoutDesc[Index]);
+			if(this.sessions.length == 1)
 			{
 				this.sessions.pop();
+				this.sessionSecondCounter.pop();
+				this.sessionIntervalDesc.pop();
+				this.sessionTimeoutDesc.pop();
 			}
 			else
 			{
-				this.sessions = this.sessions.splice(Index, 1);
+				this.sessions.splice(Index, 1);
+				this.sessionSecondCounter.splice(Index, 1);
+				this.sessionIntervalDesc.splice(Index, 1);
+				this.sessionTimeoutDesc.splice(Index, 1);
 			}
-			Log = "Sessione per l'utente " + OldSessionUser.username.toString() + " cancellata";
+
+			Log = "Sessione per l'utente \"" + OldSessionUser.username.toString() + "\" cancellata";
 			Ret = true;
 		}
 		DbgLog(Log);
@@ -214,15 +240,24 @@ const exphbs = require('express-handlebars');
 const SysCall = require('./SystemCall');
 const Users = require('./Res/loginTable');
 
-const EnableLog = true;
+const EnableLog = false;
 
 const Paths = {
 	favicon: path.join(__dirname, 'Res/server_icon.png'),
 	index_js : path.join(__dirname, 'WebJS/index.js')
 };
 
+const IndexHandlebarsObj = {
+	title: "Welcome to PiServer!",
+	up_time : "Tempo di accensione",
+	temperatura : "Temperatura CPU",
+	utilizzo_cpu : "Utilizzo CPU (%)",
+	utilizzo_ram : "Utilizzo RAM (%)",
+	ssh_n_conn : "Numero connessionni SSH"
+};
+
 const SERVER_PORT = process.env.PORT || 1989;
-const SESSION_TIMEOUT = (5 * 1000);
+const SESSION_TIMEOUT = (120 * 1000);
 
 const UsersSessions = new PiSessions();
 
@@ -268,16 +303,49 @@ piApp.get('/index.js', (req, res) =>{
 
 // Richiesta info per homepage dal javascript annesso
 // Il JS modifica la pagina di home
+
+// UpTime.innerHTML = response.uptime;
+// Temp.innerHTML = response.temp;
+// Cpu.innerHTML = `${response.cpu} %`;
+// Ram.innerHTML = `${response.ram} %`;
+// Username.innerHTML = `Username: ${response.username}`;
+// UserTime.innerHTML = `La sessione scadrà tra ${response.userTime}`;
+// SshNConn.innerHTML = response.sshConn;
+
 piApp.get('/pi_info', async (req, res) => {
+	let UpTime = await SysCall.launchSystemScript(SysCall.UptimeScript);
 	let Temp = await SysCall.launchSystemScript(SysCall.TempScript);
-	let PiDate = await SysCall.launchSystemScript(SysCall.DateScript);
+	let CpuUsage = await SysCall.launchSystemScript(SysCall.CpuUsageScript);
+	let RamUsage = await SysCall.launchSystemScript(SysCall.RamUsageScript);
 	let Username = UsersSessions.findSessionUsername('', req.ip);
-	let UserTime = UsersSessions.sessionSecondCounter[UsersSessions.findSessionIndex('', req.ip)];
+	let UserTime = UsersSessions.sessionSecondCounter[UsersSessions.findSessionIndex('', req.ip)]; 
+	let SshConn = await SysCall.launchSystemScript(SysCall.SshConnScript);
+	if(UserTime == undefined)
+	{
+		UserTime = 'N.A.';
+	}
+	else
+	{
+		if(UserTime > 60)
+		{
+			let Minute, Second;
+			Minute = parseInt(UserTime / 60);
+			Second = parseInt(UserTime % 60);
+			UserTime = `${Minute.toString()}m ${Second.toString()}s`;
+		}
+		else
+		{
+			UserTime = `${UserTime.toString()}s`;
+		}
+	}
 	let PiInfoObj = {
+		uptime : UpTime,
 		temp: Temp,
-		date : PiDate,
+		cpu : CpuUsage,
+		ram : RamUsage,
 		username : Username,
-		userTime : UserTime.toString() + "s"
+		userTime : UserTime,
+		sshConn : SshConn
 	};
 	res.send(PiInfoObj);
 });
@@ -287,13 +355,13 @@ piApp.route('/index')
 	.get(async (req, res) => {
 		if(UsersSessions.isSessionLegit(req.ip))
 		{
-			let Temp = await SysCall.launchSystemScript(SysCall.TempScript);
-			let PiDate = await SysCall.launchSystemScript(SysCall.DateScript);
 			res.render('index', {
 				title: "Welcome to PiServer!",
-				temperatura: Temp,
-				data: PiDate,
-				// session_time : (SESSION_TIMEOUT / 1000).toString() + "s"
+				up_time : "Tempo di accensione",
+				temperatura : "Temperatura CPU",
+				utilizzo_cpu : "Utilizzo CPU (%)",
+				utilizzo_ram : "Utilizzo RAM (%)",
+				ssh_n_conn : "Numero connessionni SSH"
 			})
 		}
 		else
@@ -309,13 +377,13 @@ piApp.route('/index')
 		DbgLog(UsersSessions.sessions);
 		if(UserAdmitted)
 		{
-			let Temp = await SysCall.launchSystemScript(SysCall.TempScript);
-			let PiDate = await SysCall.launchSystemScript(SysCall.DateScript);
 			res.render('index', {
 				title: "Welcome to PiServer!",
-				temperatura: Temp,
-				data: PiDate,
-				// session_time : (SESSION_TIMEOUT / 1000).toString() + "s"
+				up_time : "Tempo di accensione",
+				temperatura : "Temperatura CPU",
+				utilizzo_cpu : "Utilizzo CPU (%)",
+				utilizzo_ram : "Utilizzo RAM (%)",
+				ssh_n_conn : "Numero connessioni SSH"
 			})	
 		}
 		else

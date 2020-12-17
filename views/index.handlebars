@@ -8,25 +8,48 @@
     <script src="/index.js"></script>
     <div class="row">
         <div class="col text-center border border-dark font-weight-bold">
-            Temperatura
+            {{up_time}}
         </div>
-        <div class="col text-center border border-dark" id="pi_temp">
-            {{temperatura}}
+        <div class="col text-center border border-dark" id="pi_uptime">
         </div>
     </div>
     <div class="row">
         <div class="col text-center border border-dark font-weight-bold">
-            Data
+            {{temperatura}}
         </div>
-        <div class="col text-center border border-dark" id="pi_date">
-            {{data}}
+        <div class="col text-center border border-dark" id="pi_temp">
         </div>
     </div>
-        <div class="row">
+    <div class="row">
+        <div class="col text-center border border-dark font-weight-bold">
+            {{utilizzo_cpu}}
+        </div>
+        <div class="col text-center border border-dark" id="pi_cpu">
+            
+        </div>
+    </div>
+    <div class="row">
+        <div class="col text-center border border-dark font-weight-bold">
+            {{utilizzo_ram}}
+        </div>
+        <div class="col text-center border border-dark" id="pi_ram">
+            
+        </div>
+    </div>
+
+    <div class="row">
         <div class="col text-center border border-dark font-weight-bold" id="user_name">
             
         </div>
         <div class="col text-center border border-dark" id="user_time">
+            
+        </div>
+    </div>
+    <div class="row">
+        <div class="col text-center border border-dark font-weight-bold">
+            {{ssh_n_conn}}
+        </div>
+        <div class="col text-center border border-dark" id="pi_ssh_n_conn">
             
         </div>
     </div>

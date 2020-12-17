@@ -1,0 +1,1 @@
+/usr/bin/w | /usr/bin/grep pts | /usr/bin/wc -l
