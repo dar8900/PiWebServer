@@ -33,8 +33,9 @@ const EnableDbg = false;
 
 const UPTIME_SCRIPT = Path.join(__dirname, "Scripts", "GetUptime.sh");
 const TEMP_SCRIPT = Path.join(__dirname, 'Scripts', 'TempScript.sh'); 
-const CPU_USAGE_FILE = Path.join(__dirname, 'Scripts', 'GetCpuUsage.sh');
-const RAM_USAGE_FILE = '/proc/meminfo';
+// const CPU_USAGE_FILE = Path.join(__dirname, 'Scripts', 'GetCpuUsage.sh');
+// const RAM_USAGE_FILE = '/proc/meminfo';
+// const HDD_USAGE_FILE = Path.join(__dirname, 'Scripts', 'GetDiskUsage.sh');;
 const SSH_N_CONN_SCRIPT = Path.join(__dirname, "Scripts", "GetNSshConn.sh");
 
 const UptimeScript = new PiScript("pi-uptime", UPTIME_SCRIPT, false, (data) => {
@@ -47,25 +48,31 @@ const UptimeScript = new PiScript("pi-uptime", UPTIME_SCRIPT, false, (data) => {
     return `${Days}g ${Hours}h ${Minutes}m ${Seconds}s`;
 });
 const TempScript = new PiScript("pi-temp", TEMP_SCRIPT, false, (data)=>{return ((parseFloat(data)/1000.0).toFixed(1).toString('utf8') + "°C");});
-const CpuUsageScript = new PiScript("pi-cpu-use", CPU_USAGE_FILE, false, (data)=>{
+// const CpuUsageScript = new PiScript("pi-cpu-use", CPU_USAGE_FILE, false, (data)=>{
     
-    let Array = data.toString().split('\n');
-    CpuInfo = Array[0].match(/\d{1,9}/g);
-    let IdleTime = parseInt(CpuInfo[3]);
-    let TotCpuTime = parseInt(CpuInfo[0]) + parseInt(CpuInfo[1]) + parseInt(CpuInfo[2]) + parseInt(CpuInfo[3])
-                + parseInt(CpuInfo[4]) + parseInt(CpuInfo[5]) + parseInt(CpuInfo[6]) + parseInt(CpuInfo[7])
-                + parseInt(CpuInfo[8]) + parseInt(CpuInfo[9]);
-    let IdlePercent = ((IdleTime * 100) / TotCpuTime);
-    return ((100 - IdlePercent).toFixed(1));
+//     let Array = data.toString().split('\n');
+//     CpuInfo = Array[0].match(/\d{1,9}/g);
+//     let IdleTime = parseInt(CpuInfo[3]);
+//     let TotCpuTime = parseInt(CpuInfo[0]) + parseInt(CpuInfo[1]) + parseInt(CpuInfo[2]) + parseInt(CpuInfo[3])
+//                 + parseInt(CpuInfo[4]) + parseInt(CpuInfo[5]) + parseInt(CpuInfo[6]) + parseInt(CpuInfo[7])
+//                 + parseInt(CpuInfo[8]) + parseInt(CpuInfo[9]);
+//     let IdlePercent = ((IdleTime * 100) / TotCpuTime);
+//     return ((100 - IdlePercent).toFixed(1));
 
-});
+// });
 
-const RamUsageScript = new PiScript("pi-ram-use", RAM_USAGE_FILE, true, (data)=>{
-    let RamList = (data.toString().match(/\d{3,9}/g));
-    let RamUsage = parseInt(RamList[0]) - (parseInt(RamList[3]) + parseInt(RamList[4]) + parseInt(RamList[5]));
-    RamUsage = 100 - (RamUsage * 100) / parseInt(RamList[0]);
-    return (RamUsage.toFixed(1));
-});
+// const RamUsageScript = new PiScript("pi-ram-use", RAM_USAGE_FILE, true, (data)=>{
+//     let RamList = (data.toString().match(/\d{3,9}/g));
+//     let RamUsage = parseInt(RamList[0]) - (parseInt(RamList[3]) + parseInt(RamList[4]) + parseInt(RamList[5]));
+//     RamUsage = 100 - (RamUsage * 100) / parseInt(RamList[0]);
+//     return (RamUsage.toFixed(1));
+// });
+
+// const HddUsageScript = new PiScript("pi-hdd-use", HDD_USAGE_FILE, false, (data)=>{
+//     let HddStat = (data.toString().match(/\d{1,9}/g));
+//     let HddUsage = HddStat[6];
+//     return HddUsage;
+// });
 
 const SshConnScript = new PiScript("pi-ssh-conn", SSH_N_CONN_SCRIPT, false, (data) => {
     let NConn = data.toString();
@@ -88,8 +95,9 @@ function DbgLog(dbgMsg)
 
 exports.UptimeScript = UptimeScript;
 exports.TempScript = TempScript;
-exports.CpuUsageScript = CpuUsageScript;
-exports.RamUsageScript = RamUsageScript;
+// exports.CpuUsageScript = CpuUsageScript;
+// exports.RamUsageScript = RamUsageScript;
+// exports.HddUsageScript = HddUsageScript;
 exports.SshConnScript = SshConnScript;
 
 exports.launchSystemScript = function(WichScript)

@@ -1,0 +1,1 @@
+sudo /sbin/shutdown now

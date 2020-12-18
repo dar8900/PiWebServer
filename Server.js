@@ -239,6 +239,10 @@ const uuid = require('uuid');
 const exphbs = require('express-handlebars');
 const SysCall = require('./SystemCall');
 const Users = require('./Res/loginTable');
+var os_utils = require('node-os-utils');
+// const { resolve } = require('path');
+
+
 
 const EnableLog = false;
 
@@ -253,11 +257,12 @@ const IndexHandlebarsObj = {
 	temperatura : "Temperatura CPU",
 	utilizzo_cpu : "Utilizzo CPU (%)",
 	utilizzo_ram : "Utilizzo RAM (%)",
+	utilizzo_disco : "Utilizzo disco (%)",
 	ssh_n_conn : "Numero connessionni SSH"
 };
 
 const SERVER_PORT = process.env.PORT || 1989;
-const SESSION_TIMEOUT = (120 * 1000);
+const SESSION_TIMEOUT = (15 * 60 * 1000);
 
 const UsersSessions = new PiSessions();
 
@@ -303,20 +308,13 @@ piApp.get('/index.js', (req, res) =>{
 
 // Richiesta info per homepage dal javascript annesso
 // Il JS modifica la pagina di home
-
-// UpTime.innerHTML = response.uptime;
-// Temp.innerHTML = response.temp;
-// Cpu.innerHTML = `${response.cpu} %`;
-// Ram.innerHTML = `${response.ram} %`;
-// Username.innerHTML = `Username: ${response.username}`;
-// UserTime.innerHTML = `La sessione scadrà tra ${response.userTime}`;
-// SshNConn.innerHTML = response.sshConn;
-
 piApp.get('/pi_info', async (req, res) => {
 	let UpTime = await SysCall.launchSystemScript(SysCall.UptimeScript);
 	let Temp = await SysCall.launchSystemScript(SysCall.TempScript);
-	let CpuUsage = await SysCall.launchSystemScript(SysCall.CpuUsageScript);
-	let RamUsage = await SysCall.launchSystemScript(SysCall.RamUsageScript);
+	let CpuUsage = await os_utils.cpu.usage();
+	let RamUsage = await os_utils.mem.info();
+	RamUsage = (100 - RamUsage.freeMemPercentage).toFixed(2);
+	let HddUsage = await os_utils.drive.info();
 	let Username = UsersSessions.findSessionUsername('', req.ip);
 	let UserTime = UsersSessions.sessionSecondCounter[UsersSessions.findSessionIndex('', req.ip)]; 
 	let SshConn = await SysCall.launchSystemScript(SysCall.SshConnScript);
@@ -343,6 +341,7 @@ piApp.get('/pi_info', async (req, res) => {
 		temp: Temp,
 		cpu : CpuUsage,
 		ram : RamUsage,
+		hdd : HddUsage.usedPercentage,
 		username : Username,
 		userTime : UserTime,
 		sshConn : SshConn
@@ -355,14 +354,7 @@ piApp.route('/index')
 	.get(async (req, res) => {
 		if(UsersSessions.isSessionLegit(req.ip))
 		{
-			res.render('index', {
-				title: "Welcome to PiServer!",
-				up_time : "Tempo di accensione",
-				temperatura : "Temperatura CPU",
-				utilizzo_cpu : "Utilizzo CPU (%)",
-				utilizzo_ram : "Utilizzo RAM (%)",
-				ssh_n_conn : "Numero connessionni SSH"
-			})
+			res.render('index', IndexHandlebarsObj)
 		}
 		else
 		{
@@ -377,14 +369,7 @@ piApp.route('/index')
 		DbgLog(UsersSessions.sessions);
 		if(UserAdmitted)
 		{
-			res.render('index', {
-				title: "Welcome to PiServer!",
-				up_time : "Tempo di accensione",
-				temperatura : "Temperatura CPU",
-				utilizzo_cpu : "Utilizzo CPU (%)",
-				utilizzo_ram : "Utilizzo RAM (%)",
-				ssh_n_conn : "Numero connessioni SSH"
-			})	
+			res.render('index', IndexHandlebarsObj)	
 		}
 		else
 		{
