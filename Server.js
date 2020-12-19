@@ -191,7 +191,7 @@ class PiSessions
 	}
 	delSession(OldSessionUser)
 	{
-		let Log = "Sessione per l'utente \"" + OldSessionUser.username.toString() + "\" non cancellata";
+		
 		let Ret = false;
 		let Index = this.findSessionIndex(OldSessionUser);
 		if(Index != undefined)
@@ -213,13 +213,24 @@ class PiSessions
 				this.sessionIntervalDesc.splice(Index, 1);
 				this.sessionTimeoutDesc.splice(Index, 1);
 			}
-
+			// let Log = "Sessione per l'utente \"" + OldSessionUser.username.toString() + "\" non cancellata";
 			Log = "Sessione per l'utente \"" + OldSessionUser.username.toString() + "\" cancellata";
 			Ret = true;
 		}
 		DbgLog(Log);
 		return Ret;
 	}
+	delAllSessions()
+	{
+		if(this.sessions.length > 0)
+		{
+			this.sessions = [];
+			this.sessionSecondCounter = [];
+			this.sessionIntervalDesc = [];
+			this.sessionTimeoutDesc = [];
+		}
+	}
+
 	isSessionLegit(UserIp)
 	{
 		let UserLegit = false;
@@ -229,6 +240,30 @@ class PiSessions
 			UserLegit = true;
 		}
 		return UserLegit;
+	}
+	logoutSession(UserIp)
+	{
+		let SessionIndex = this.findSessionIndex('', UserIp);
+		if(SessionIndex != undefined)
+		{
+			DbgLog(`Indice da cancellare ${SessionIndex}`);
+			clearInterval(this.sessionIntervalDesc[SessionIndex]);
+			clearTimeout(this.sessionTimeoutDesc[SessionIndex]);
+			if(this.sessions.length == 1)
+			{
+				this.sessions.pop();
+				this.sessionSecondCounter.pop();
+				this.sessionIntervalDesc.pop();
+				this.sessionTimeoutDesc.pop();
+			}
+			else
+			{
+				this.sessions.splice(SessionIndex, 1);
+				this.sessionSecondCounter.splice(SessionIndex, 1);
+				this.sessionIntervalDesc.splice(SessionIndex, 1);
+				this.sessionTimeoutDesc.splice(SessionIndex, 1);
+			}
+		}
 	}
 
 }
@@ -241,7 +276,6 @@ const SysCall = require('./SystemCall');
 const Users = require('./Res/loginTable');
 var os_utils = require('node-os-utils');
 // const { resolve } = require('path');
-
 
 
 const EnableLog = false;
@@ -377,6 +411,72 @@ piApp.route('/index')
 		}
 	})
 
+piApp.get('/system', (req, res) => {
+	if(UsersSessions.isSessionLegit(req.ip))
+	{
+		res.render('system', {
+			sys_message : ''
+		});
+	}
+	else
+	{
+		res.redirect('/login');
+	}
+	
+});
+
+piApp.get('/reboot', async (req, res) => {
+	if(UsersSessions.isSessionLegit(req.ip))
+	{
+		console.log("Reboot in corso");
+		res.render('system', {
+			sys_message : "Riavvio in corso..."
+		});
+		UsersSessions.delAllSessions();
+		const Reboot = require('child_process').spawn('/home/deo/Homeshare/PiserverJS/Scripts/PiReboot.sh');
+	}
+	else
+	{
+		res.redirect('/login');
+	}
+	
+});
+
+
+piApp.get('/shutdown', (req, res) => {
+	if(UsersSessions.isSessionLegit(req.ip))
+	{
+		console.log("Reboot in corso");
+		res.render('system', {
+			sys_message : "Spegnimento in corso..."
+		});
+		UsersSessions.delAllSessions();
+		const Reboot = require('child_process').spawn('/home/deo/Homeshare/PiserverJS/Scripts/PiShutdown.sh');
+	}
+	else
+	{
+		res.redirect('/login');
+	}
+	
+});
+
+piApp.get('/network', (req, res) => {
+	if(UsersSessions.isSessionLegit(req.ip))
+	{
+		res.render('network');
+	}
+	else
+	{
+		res.redirect('/login');
+	}
+	
+});
+
+piApp.get('/logout', (req, res) => {
+	UsersSessions.logoutSession(req.ip);
+	res.redirect('/login');
+
+});
 
 piApp.get('/*', (req, res) => {
 	res.render('not_found', {

@@ -1,0 +1,28 @@
+<ul class="nav justify-content-center" style="background-color: antiquewhite;">
+    <li class="nav-item">
+        <a class="nav-link active" aria-current="page" href="/index">Home</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="/system">Sistema</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="/network">Network</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="/logout" tabindex="-1">Logout</a>
+    </li>
+</ul>
+
+<div class="container mt-4 text-center">
+    <div class="container-fluid">
+        <h1 class="text-center mb-3 bg-success">Sistema</h1>
+    </div>
+    <br>
+    <div class="container-fluid"></div>
+        <a href="/shutdown"  class="border border-danger rounded-top p-3 mb-2 bg-danger text-dark"><b>Spegni PiServer</b></a>
+        <a href="/reboot" class="border border-warning rounded-top p-3 mb-2 bg-warning text-dark"><b>Riavvia PiServer</b></a>
+    </div>
+    <div class="container-fluid  text-center">
+        {{sys_message}}
+    </div>
+</div>  

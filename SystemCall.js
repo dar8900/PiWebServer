@@ -3,6 +3,7 @@ const FileSystem = require('fs');
 const Path = require('path');
 const ScriptRun = require('child_process');
 const { transcode } = require('buffer');
+const { pathToFileURL } = require('url');
 
 class Error 
 {
@@ -37,6 +38,8 @@ const TEMP_SCRIPT = Path.join(__dirname, 'Scripts', 'TempScript.sh');
 // const RAM_USAGE_FILE = '/proc/meminfo';
 // const HDD_USAGE_FILE = Path.join(__dirname, 'Scripts', 'GetDiskUsage.sh');;
 const SSH_N_CONN_SCRIPT = Path.join(__dirname, "Scripts", "GetNSshConn.sh");
+
+const REBOOT_SCRIPTS = Path.join(__dirname, "Scripts", "PiReboot.sh");
 
 const UptimeScript = new PiScript("pi-uptime", UPTIME_SCRIPT, false, (data) => {
     let Days, Hours, Minutes, Seconds;
@@ -79,6 +82,10 @@ const SshConnScript = new PiScript("pi-ssh-conn", SSH_N_CONN_SCRIPT, false, (dat
     return (parseInt(NConn)).toString();
 });
 
+const Reboot = new PiScript("pi-reboot", SSH_N_CONN_SCRIPT, false, (data) => {
+    return;
+});
+
 
 function DbgLog(dbgMsg)
 {
@@ -99,6 +106,7 @@ exports.TempScript = TempScript;
 // exports.RamUsageScript = RamUsageScript;
 // exports.HddUsageScript = HddUsageScript;
 exports.SshConnScript = SshConnScript;
+exports.Reboot = Reboot;
 
 exports.launchSystemScript = function(WichScript)
 {
