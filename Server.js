@@ -282,6 +282,7 @@ const EnableLog = false;
 
 const Paths = {
 	favicon: path.join(__dirname, 'Res/server_icon.png'),
+	actual_time_js : path.join(__dirname, 'WebJS/actualTime.js'),
 	index_js : path.join(__dirname, 'WebJS/index.js')
 };
 
@@ -335,6 +336,12 @@ piApp.get('/login', (req, res) =>
     title: 'Pi Server Login'
   })
 );
+
+// Richiesta del javascript per la get time
+piApp.get('/actualTime.js', (req, res) =>{
+	res.sendFile(Paths.actual_time_js);
+});
+
 // Richiesta del javascript per la home page
 piApp.get('/index.js', (req, res) =>{
 	res.sendFile(Paths.index_js);
