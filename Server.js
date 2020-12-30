@@ -296,7 +296,8 @@ const IndexHandlebarsObj = {
 	ssh_n_conn : "Numero connessionni SSH"
 };
 
-const SERVER_PORT = process.env.PORT || 1989;
+// const SERVER_PORT = process.env.PORT || 1989;
+const PORT = require('./Definitions');
 const SESSION_TIMEOUT = (15 * 60 * 1000);
 
 const UsersSessions = new PiSessions();
@@ -491,4 +492,4 @@ piApp.get('/*', (req, res) => {
 	})
 });
 	
-piApp.listen(SERVER_PORT, () => console.log(`Server started on port ${SERVER_PORT}`));
+piApp.listen(PORT.SERVER_PORT, () => console.log(`Server started on port ${PORT.SERVER_PORT}`));
