@@ -268,12 +268,14 @@ class PiSessions
 
 }
 
+
+
 const express = require('express');
 const path = require('path');
 const uuid = require('uuid');
 const exphbs = require('express-handlebars');
-const SysCall = require('./SystemCall');
-const Users = require('./Res/loginTable');
+const SysCall = require(__dirname + '/SystemCall');
+const Users = require(__dirname + '/Res/loginTable');
 var os_utils = require('node-os-utils');
 // const { resolve } = require('path');
 
@@ -297,7 +299,7 @@ const IndexHandlebarsObj = {
 };
 
 // const SERVER_PORT = process.env.PORT || 1989;
-const PORT = require('./Definitions');
+const PORT = require(__dirname + '/Definitions');
 const SESSION_TIMEOUT = (15 * 60 * 1000);
 
 const UsersSessions = new PiSessions();
