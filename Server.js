@@ -1,3 +1,38 @@
+const express = require('express');
+const path = require('path');
+const uuid = require('uuid');
+const exphbs = require('express-handlebars');
+const SysCall = require(__dirname + '/SystemCall');
+const Users = require(__dirname + '/Res/loginTable');
+var os_utils = require('node-os-utils');
+const FileSystem = require('fs');
+const { default: Os } = require('node-os-utils/lib/os');
+const OsInfo = require('os');
+const net_stat = require('net-stat');
+
+
+const EnableLog = false;
+
+const Paths = {
+	log_file : '/home/deo/Logs/Webserver.log',
+	favicon: path.join(__dirname, 'Res/server_icon.png'),
+	actual_time_js : path.join(__dirname, 'WebJS/actualTime.js'),
+	index_js : path.join(__dirname, 'WebJS/index.js')
+};
+
+const IndexHandlebarsObj = {
+	title: "Welcome to PiServer!",
+	up_time : "Tempo di accensione",
+	temperatura : "Temperatura CPU",
+	utilizzo_cpu : "Utilizzo CPU (%)",
+	utilizzo_ram : "Utilizzo RAM (%)",
+	utilizzo_disco : "Utilizzo disco (%)",
+	ssh_n_conn : "Numero connessionni SSH"
+};
+
+
+
+
 class PiUser
 {
 	constructor(Userinfo)
@@ -9,9 +44,9 @@ class PiUser
 	async sessionUserValidation(UserIp)
 	{
 		let ValidateLogin = false;
-		for(let i = 0; i < Users.length; i++)
+		for(let i = 0; i < Users.users.length; i++)
 		{
-			if(Users[i].username == this.userinfo.username && Users[i].passwd == this.userinfo.passwd)
+			if(Users.users[i].username == this.userinfo.username && Users.users[i].passwd == this.userinfo.passwd)
 			{
 				ValidateLogin = true;
 				this.userinfo.userID = uuid.v4();
@@ -269,36 +304,6 @@ class PiSessions
 }
 
 
-
-const express = require('express');
-const path = require('path');
-const uuid = require('uuid');
-const exphbs = require('express-handlebars');
-const SysCall = require(__dirname + '/SystemCall');
-const Users = require(__dirname + '/Res/loginTable');
-var os_utils = require('node-os-utils');
-// const { resolve } = require('path');
-
-
-const EnableLog = false;
-
-const Paths = {
-	favicon: path.join(__dirname, 'Res/server_icon.png'),
-	actual_time_js : path.join(__dirname, 'WebJS/actualTime.js'),
-	index_js : path.join(__dirname, 'WebJS/index.js')
-};
-
-const IndexHandlebarsObj = {
-	title: "Welcome to PiServer!",
-	up_time : "Tempo di accensione",
-	temperatura : "Temperatura CPU",
-	utilizzo_cpu : "Utilizzo CPU (%)",
-	utilizzo_ram : "Utilizzo RAM (%)",
-	utilizzo_disco : "Utilizzo disco (%)",
-	ssh_n_conn : "Numero connessionni SSH"
-};
-
-// const SERVER_PORT = process.env.PORT || 1989;
 const PORT = require(__dirname + '/Definitions');
 const SESSION_TIMEOUT = (15 * 60 * 1000);
 
@@ -306,12 +311,26 @@ const UsersSessions = new PiSessions();
 
 const piApp = express();
 
+
 function DbgLog(DbgMsg)
 {
 	if(EnableLog)
 	{
 		console.log(DbgMsg);
 	}
+}
+function getTime()
+{
+    const LocaleDate = new Date();
+	let TimeDate= LocaleDate.toLocaleDateString() + ' ' + LocaleDate.toLocaleTimeString();
+	return TimeDate;
+}
+
+function logToFile(LogMessage)
+{
+	let ActualTime = getTime();
+	FileSystem.appendFile(Paths.log_file, `${ActualTime} - ${LogMessage} \n`, (err) => {
+		if (err) throw err; });
 }
 
 // Handlebars Middleware
@@ -334,10 +353,10 @@ piApp.get('/favicon.ico', (req, res) => {
 });
 
 // Pagina di login
-piApp.get('/login', (req, res) =>
-  res.render('login', {
-    title: 'Pi Server Login'
-  })
+piApp.get('/login', (req, res) =>{
+	res.render('login', {
+		title: 'Pi Server Login'
+	})}
 );
 
 // Richiesta del javascript per la get time
@@ -413,6 +432,7 @@ piApp.route('/index')
 		DbgLog(UsersSessions.sessions);
 		if(UserAdmitted)
 		{
+			logToFile(`Login effettuato da: ${UsersSessions.findSessionUsername('', req.ip)}`);
 			res.render('index', IndexHandlebarsObj)	
 		}
 		else
@@ -439,6 +459,10 @@ piApp.get('/reboot', async (req, res) => {
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
 		console.log("Reboot in corso");
+		logToFile('Richiesta di riavvio');
+		// let ActualTime = getTime();
+		// FileSystem.appendFile(Paths.log_file, `${ActualTime} - Richiesta di riavvio \n`, (err) => {
+		// 	if (err) throw err; });
 		res.render('system', {
 			sys_message : "Riavvio in corso..."
 		});
@@ -456,7 +480,11 @@ piApp.get('/reboot', async (req, res) => {
 piApp.get('/shutdown', (req, res) => {
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
-		console.log("Reboot in corso");
+		console.log("Spegnimento in corso");
+		logToFile('Richiesta di spegnimento');
+		// let ActualTime = getTime();
+		// FileSystem.appendFile(Paths.log_file, `${ActualTime} - Richiesta di spegnimento \n`, (err) => {
+		// 	if (err) throw err; });
 		res.render('system', {
 			sys_message : "Spegnimento in corso..."
 		});
@@ -473,7 +501,19 @@ piApp.get('/shutdown', (req, res) => {
 piApp.get('/network', (req, res) => {
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
-		res.render('network');
+		let NetInfo = OsInfo.networkInterfaces();
+		let NetStat = {
+			total_rx : net_stat.totalRx({ iface: 'eth0', units: 'MiB' }), 
+			total_tx : net_stat.totalTx({ iface: 'eth0', units: 'MiB' })
+		};
+		res.render('network', {
+			ip_address : NetInfo.eth0[0].address,
+			netmask : NetInfo.eth0[0].netmask,
+			gateway : '192.168.2.254',
+			mac_address : NetInfo.eth0[0].mac,
+			tot_rx : NetStat.total_rx.toFixed(1) + "MB",
+			tot_tx : NetStat.total_tx.toFixed(1) + "MB"
+		});
 	}
 	else
 	{
@@ -483,15 +523,21 @@ piApp.get('/network', (req, res) => {
 });
 
 piApp.get('/logout', (req, res) => {
+	logToFile(`Effettuato logout da: ${UsersSessions.findSessionUsername('', req.ip)}`);
 	UsersSessions.logoutSession(req.ip);
 	res.redirect('/login');
 
 });
 
+
 piApp.get('/*', (req, res) => {
+	logToFile(`Richiesta pagina non esistente`);
 	res.render('not_found', {
 		title: "404 not found"
 	})
 });
 	
-piApp.listen(PORT.SERVER_PORT, () => console.log(`Server started on port ${PORT.SERVER_PORT}`));
+piApp.listen(PORT.SERVER_PORT, () => {
+	console.log(`Server started on port ${PORT.SERVER_PORT}`);
+	logToFile(`Server in ascolto sulla porta ${PORT.SERVER_PORT}`);
+});
