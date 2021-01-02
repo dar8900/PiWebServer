@@ -12,11 +12,46 @@
         <a class="nav-link" href="/logout" tabindex="-1">Logout</a>
     </li>
 </ul>
-
+<div class="container-fluid">
+    <h1 class="text-center mb-3 bg-success">Sistema</h1>
+</div>
 <div class="container mt-4 text-center">
-    <div class="container-fluid">
-        <h1 class="text-center mb-3 bg-success">Sistema</h1>
-    </div>
+<table class="table table-info">
+  <thead>
+    <tr>
+      <th scope="col">Parametro</th>
+      <th scope="col">Valore</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th class="table-success" scope="row">Architettura</th>
+      <td>{{os_arch}}</td>
+    </tr>
+    <tr>
+      <th class="table-success" scope="row">Platform</th>
+      <td>{{os_platform}}</td>
+    </tr>
+    <tr>
+      <th class="table-success" scope="row">Tipo</th>
+      <td>{{os_type}}</td>
+    </tr>
+    <tr>
+        <th class="table-success" scope="row">Numero release</th>
+        <td>{{os_release}}</td>
+    </tr>
+    <tr>
+        <th class="table-success" scope="row">Nome sistema</th>
+        <td>{{os_name}}</td>
+    </tr>   
+    <tr>
+        <th class="table-success" scope="row">Hostname</th>
+        <td>{{os_hostname}}</td>
+    </tr>     
+  </tbody>
+</table>
+</div>
+<div class="container mt-4 text-center">
     <br>
     <div class="container-fluid"></div>
         <a href="/shutdown"  class="border border-danger rounded-top p-3 mb-2 bg-danger text-dark"><b>Spegni PiServer</b></a>

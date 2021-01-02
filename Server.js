@@ -444,7 +444,14 @@ piApp.route('/index')
 piApp.get('/system', (req, res) => {
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
+		
 		res.render('system', {
+			os_arch : OsInfo.arch(),
+			os_platform : OsInfo.platform(),
+			os_type : OsInfo.type(),
+			os_release : OsInfo.release(),
+			os_name : 'Ubuntu server 20.04',
+			os_hostname : OsInfo.hostname(),
 			sys_message : ''
 		});
 	}
