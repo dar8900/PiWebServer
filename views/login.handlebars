@@ -1,17 +1,17 @@
-<div class="container mt-4">
+<div class="container mt-4 bg-light text-center">
   <h1 class="text-center mb-3 bg-info">{{title}}</h1>
   <form action="/index" method="POST" class="mb-4">
-    <div class="form-group">
-      <label for="username">Name</label>
-      <input type="text" autocomplete="off" name="username" required class="form-control">
+    <div class="form-floating mb-3">
+      <input type="text" autocomplete="off" id="username" name="username" required class="form-control" placeholder="username">
+      <label for="username">Username</label>
     </div>
-    <div class="form-group">
+    <div class="form-floating mb-3">
+      <input type="password" autocomplete="off" id="passwd" name="passwd" required class="form-control" placeholder="password">
       <label for="passwd">Password</label>
-      <input type="password" autocomplete="off" name="passwd" required class="form-control">
     </div>
     <br>
-    <div class="form-group">
-      <input type="submit" value="Login" class="btn btn-outline-dark btn-block">
+    <div class="form-group mb-3">
+      <input type="submit" value="Login" class="btn btn-outline-dark btn-block btn-lg">
     </div>
   </form>
 </div>

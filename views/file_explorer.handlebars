@@ -1,0 +1,50 @@
+<ul class="nav justify-content-center" style="background-color: antiquewhite;">
+    <li class="nav-item">
+        <a class="nav-link active" aria-current="page" href="/index">Home</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="/system">Sistema</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="/network">Network</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="/files_exp">Files</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="/logout" tabindex="-1">Logout</a>
+    </li>
+</ul>
+
+<div class="container mt-4 text-center">
+    <h1 class="text-center mb-3 bg-success">File explorer</h1>
+</div>
+<br> 
+
+<div class="container mt-4 text-center">
+    <table class="table-light">
+        <thead>
+            <tr class="table-info"> 
+                <th scope="col" class="table-info">Nomi dei file </th>
+                {{!-- <th scope="col" class="table-info">Dimensione </th> --}}
+            </tr>
+        </thead>
+        <tbody>
+        {{# each file_name}}
+            <tr class="table-info">
+                <td>
+                    {{this}}
+                </td>
+            </tr>
+        {{/each}}
+        </tbody>
+    </table>
+</div>
+
+
+
+
+<div class="container mt-4 p-3 mb-2 bg-info text-dark">
+    <script src="/actualTime.js" ></script>
+    <h6 style="text-align: center;" id="orario"> </h6>
+</div>
