@@ -1,4 +1,4 @@
-const users = 
+var users = 
 [
     {
         username:"dario",
@@ -10,4 +10,4 @@ const users =
     }
 ];
 
-module.exports = users;
+exports.users = users;

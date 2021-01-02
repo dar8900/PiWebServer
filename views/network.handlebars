@@ -24,22 +24,34 @@
 <table class="table table-info">
   <thead>
     <tr>
-      <th scope="col">#</th>
-      <th scope="col">First</th>
+      <th scope="col">Parametro</th>
+      <th scope="col">Valore</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <th class="table-success" scope="row">1</th>
-      <td>Mark</td>
+      <th class="table-success" scope="row">Indirizzo IP</th>
+      <td>{{ip_address}}</td>
     </tr>
     <tr>
-      <th class="table-success" scope="row">2</th>
-      <td>Jacob</td>
+      <th class="table-success" scope="row">Netmask</th>
+      <td>{{netmask}}</td>
     </tr>
     <tr>
-      <th class="table-success" scope="row">3</th>
-      <td colspan="2">Larry the Bird</td>
+      <th class="table-success" scope="row">Gateway</th>
+      <td>{{gateway}}</td>
+    </tr>
+    <tr>
+      <th class="table-success" scope="row">MAC address</th>
+      <td>{{mac_address}}</td>
+    </tr>
+    <tr>
+      <th class="table-success" scope="row">Dimensione totale pacchetti ricevuti</th>
+      <td>{{tot_rx}}</td>
+    </tr>
+        <tr>
+      <th class="table-success" scope="row">Dimensione totale pacchetti inviati</th>
+      <td>{{tot_tx}}</td>
     </tr>
   </tbody>
 </table>
