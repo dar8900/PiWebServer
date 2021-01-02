@@ -277,12 +277,14 @@ const exphbs = require('express-handlebars');
 const SysCall = require(__dirname + '/SystemCall');
 const Users = require(__dirname + '/Res/loginTable');
 var os_utils = require('node-os-utils');
+const FileSystem = require('fs');
 // const { resolve } = require('path');
 
 
 const EnableLog = false;
 
 const Paths = {
+	log_file : '/home/deo/Logs/Webserver.log',
 	favicon: path.join(__dirname, 'Res/server_icon.png'),
 	actual_time_js : path.join(__dirname, 'WebJS/actualTime.js'),
 	index_js : path.join(__dirname, 'WebJS/index.js')
@@ -312,6 +314,19 @@ function DbgLog(DbgMsg)
 	{
 		console.log(DbgMsg);
 	}
+}
+function getTime()
+{
+    const LocaleDate = new Date();
+	let TimeDate= LocaleDate.toLocaleDateString() + ' ' + LocaleDate.toLocaleTimeString();
+	return TimeDate;
+}
+
+function logToFile(LogMessage)
+{
+	let ActualTime = getTime();
+	FileSystem.appendFile(Paths.log_file, `${ActualTime} - ${LogMessage} \n`, (err) => {
+		if (err) throw err; });
 }
 
 // Handlebars Middleware
@@ -413,6 +428,7 @@ piApp.route('/index')
 		DbgLog(UsersSessions.sessions);
 		if(UserAdmitted)
 		{
+			logToFile(`Login effettuato da: ${UsersSessions.findSessionUsername('', req.ip)}`);
 			res.render('index', IndexHandlebarsObj)	
 		}
 		else
@@ -439,6 +455,10 @@ piApp.get('/reboot', async (req, res) => {
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
 		console.log("Reboot in corso");
+		logToFile('Richiesta di riavvio');
+		// let ActualTime = getTime();
+		// FileSystem.appendFile(Paths.log_file, `${ActualTime} - Richiesta di riavvio \n`, (err) => {
+		// 	if (err) throw err; });
 		res.render('system', {
 			sys_message : "Riavvio in corso..."
 		});
@@ -456,7 +476,11 @@ piApp.get('/reboot', async (req, res) => {
 piApp.get('/shutdown', (req, res) => {
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
-		console.log("Reboot in corso");
+		console.log("Spegnimento in corso");
+		logToFile('Richiesta di spegnimento');
+		// let ActualTime = getTime();
+		// FileSystem.appendFile(Paths.log_file, `${ActualTime} - Richiesta di spegnimento \n`, (err) => {
+		// 	if (err) throw err; });
 		res.render('system', {
 			sys_message : "Spegnimento in corso..."
 		});
@@ -483,15 +507,20 @@ piApp.get('/network', (req, res) => {
 });
 
 piApp.get('/logout', (req, res) => {
+	logToFile(`Effettuato logout da: ${UsersSessions.findSessionUsername('', req.ip)}`);
 	UsersSessions.logoutSession(req.ip);
 	res.redirect('/login');
 
 });
 
 piApp.get('/*', (req, res) => {
+	logToFile(`Richiesta pagina non esistente`);
 	res.render('not_found', {
 		title: "404 not found"
 	})
 });
 	
-piApp.listen(PORT.SERVER_PORT, () => console.log(`Server started on port ${PORT.SERVER_PORT}`));
+piApp.listen(PORT.SERVER_PORT, () => {
+	console.log(`Server started on port ${PORT.SERVER_PORT}`);
+	logToFile(`Server in ascolto sulla porta ${PORT.SERVER_PORT}`);
+});
