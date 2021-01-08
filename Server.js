@@ -582,5 +582,6 @@ piApp.get('/*', (req, res) => {
 	
 piApp.listen(PORT.SERVER_PORT, () => {
 	console.log(`Server started on port ${PORT.SERVER_PORT}`);
-	logToFile(`Server in ascolto sulla porta ${PORT.SERVER_PORT}`);
+	logToFile(`Webserver avviato e in ascolto sulla porta ${PORT.SERVER_PORT}`);
+	// logToFile(`Server in ascolto sulla porta ${PORT.SERVER_PORT}`);
 });
