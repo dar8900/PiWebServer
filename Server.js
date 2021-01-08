@@ -462,14 +462,37 @@ piApp.get('/system', (req, res) => {
 	
 });
 
+piApp.get('/log_download', (req, res) => {
+	if(UsersSessions.isSessionLegit(req.ip))
+	{
+		let LogFileSize = FileSystem.statSync(Paths.log_file).size;
+		// let LogFile = '';
+		// function getLogFile(error, data)
+		// {
+		// 	if(error)
+		// 	{
+		// 		throw error;
+		// 	}
+		// 	LogFile = data;
+		// }
+		let LogFile = FileSystem.readFileSync(Paths.log_file);
+		res.setHeader('Content-Length', LogFileSize);
+		res.setHeader('Content-Type', 'text/plain');
+		res.setHeader('Content-Disposition', 'attachment; filename=Webserver.log');
+		res.write(LogFile);
+		res.end();
+	}
+	else
+	{
+		res.redirect('/login');
+	}
+});
+
 piApp.get('/reboot', async (req, res) => {
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
 		console.log("Reboot in corso");
 		logToFile('Richiesta di riavvio');
-		// let ActualTime = getTime();
-		// FileSystem.appendFile(Paths.log_file, `${ActualTime} - Richiesta di riavvio \n`, (err) => {
-		// 	if (err) throw err; });
 		res.render('system', {
 			sys_message : "Riavvio in corso..."
 		});
@@ -489,9 +512,6 @@ piApp.get('/shutdown', (req, res) => {
 	{
 		console.log("Spegnimento in corso");
 		logToFile('Richiesta di spegnimento');
-		// let ActualTime = getTime();
-		// FileSystem.appendFile(Paths.log_file, `${ActualTime} - Richiesta di spegnimento \n`, (err) => {
-		// 	if (err) throw err; });
 		res.render('system', {
 			sys_message : "Spegnimento in corso..."
 		});
@@ -529,6 +549,22 @@ piApp.get('/network', (req, res) => {
 	
 });
 
+piApp.get('/files_exp', (req, res) => {
+	if(UsersSessions.isSessionLegit(req.ip))
+	{
+		res.render('under_construction');
+		// res.render('file_explorer', {
+		// 	file_name : ['lol1', 'lol2', 'lol3']
+		// });
+	}
+	else
+	{
+		res.redirect('/login');
+	}
+});
+
+
+
 piApp.get('/logout', (req, res) => {
 	logToFile(`Effettuato logout da: ${UsersSessions.findSessionUsername('', req.ip)}`);
 	UsersSessions.logoutSession(req.ip);
@@ -546,5 +582,6 @@ piApp.get('/*', (req, res) => {
 	
 piApp.listen(PORT.SERVER_PORT, () => {
 	console.log(`Server started on port ${PORT.SERVER_PORT}`);
-	logToFile(`Server in ascolto sulla porta ${PORT.SERVER_PORT}`);
+	logToFile(`Webserver avviato e in ascolto sulla porta ${PORT.SERVER_PORT}`);
+	// logToFile(`Server in ascolto sulla porta ${PORT.SERVER_PORT}`);
 });
