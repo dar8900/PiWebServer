@@ -466,15 +466,6 @@ piApp.get('/log_download', (req, res) => {
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
 		let LogFileSize = FileSystem.statSync(Paths.log_file).size;
-		// let LogFile = '';
-		// function getLogFile(error, data)
-		// {
-		// 	if(error)
-		// 	{
-		// 		throw error;
-		// 	}
-		// 	LogFile = data;
-		// }
 		let LogFile = FileSystem.readFileSync(Paths.log_file);
 		res.setHeader('Content-Length', LogFileSize);
 		res.setHeader('Content-Type', 'text/plain');
