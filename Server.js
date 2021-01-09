@@ -11,10 +11,13 @@ const OsInfo = require('os');
 const net_stat = require('net-stat');
 
 
+
 const EnableLog = false;
 
+const LogFileName = 'Webserver.log';
+
 const Paths = {
-	log_file : '/home/deo/Logs/Webserver.log',
+	log_file :  `/home/deo/Logs/${LogFileName}`,
 	favicon: path.join(__dirname, 'Res/server_icon.png'),
 	actual_time_js : path.join(__dirname, 'WebJS/actualTime.js'),
 	index_js : path.join(__dirname, 'WebJS/index.js')
@@ -306,6 +309,7 @@ class PiSessions
 
 const PORT = require(__dirname + '/Definitions');
 const SESSION_TIMEOUT = (15 * 60 * 1000);
+var OldPage = '';
 
 const UsersSessions = new PiSessions();
 
@@ -329,8 +333,44 @@ function getTime()
 function logToFile(LogMessage)
 {
 	let ActualTime = getTime();
-	FileSystem.appendFile(Paths.log_file, `${ActualTime} - ${LogMessage} \n`, (err) => {
-		if (err) throw err; });
+	FileSystem.access(Paths.log_file, (err) => {
+		if(err)
+		{
+			FileSystem.appendFile(Paths.log_file, `${ActualTime} - Creato file di log \n`, (err) => {
+				if (err) throw err; });
+			FileSystem.appendFile(Paths.log_file, `${ActualTime} - ${LogMessage} \n`, (err) => {
+					if (err) throw err; });
+		}
+		else
+		{
+			FileSystem.appendFile(Paths.log_file, `${ActualTime} - ${LogMessage} \n`, (err) => {
+				if (err) throw err; });
+		}
+	});
+
+}
+
+function BackPage()
+{
+	let RetPage = '';
+	switch (OldPage) {
+		case `Index`:
+			RetPage = '/index';
+			break;
+		case `System`:
+			RetPage = '/system';
+			break;
+		case `Network`:
+			RetPage = '/network';
+			break;
+		// case `FileExp`:
+		// 	RetPage = 'files_exp';
+		// 	break;
+		default:
+			RetPage = '/index';
+			break;
+	}
+	return RetPage;
 }
 
 // Handlebars Middleware
@@ -415,6 +455,7 @@ piApp.get('/pi_info', async (req, res) => {
 // Routing per la home page, può avvenire sia tramite get o post
 piApp.route('/index')
 	.get(async (req, res) => {
+		OldPage = 'Index';
 		if(UsersSessions.isSessionLegit(req.ip))
 		{
 			res.render('index', IndexHandlebarsObj)
@@ -425,6 +466,7 @@ piApp.route('/index')
 		}
 	})
 	.post(async(req, res) => {
+		OldPage = 'Index';
 		let LoginReq = req.body;
 		let LoginIP = req.ip;
 		let UserAdmitted = await UsersSessions.addSession(LoginReq, LoginIP);
@@ -441,7 +483,10 @@ piApp.route('/index')
 		}
 	})
 
-piApp.get('/system', (req, res) => {
+// piApp.get('/back')
+
+piApp.get('/system', async (req, res) => {
+	OldPage = 'System';
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
 		
@@ -462,22 +507,104 @@ piApp.get('/system', (req, res) => {
 	
 });
 
-piApp.get('/log_download', (req, res) => {
+piApp.get('/show_log', async (req, res) => {
+
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
-		let LogFileSize = FileSystem.statSync(Paths.log_file).size;
-		let LogFile = FileSystem.readFileSync(Paths.log_file);
-		res.setHeader('Content-Length', LogFileSize);
-		res.setHeader('Content-Type', 'text/plain');
-		res.setHeader('Content-Disposition', 'attachment; filename=Webserver.log');
-		res.write(LogFile);
-		res.end();
+		FileSystem.access(Paths.log_file, (err) => {
+			if(err)
+			{
+				res.render('info', {
+					info_page_msg : `Il file ${LogFileName} non è presente`
+				});
+			}
+			else
+			{
+				FileSystem.readFile(Paths.log_file, (err, data) => {
+					if(err)
+					{
+						throw err;
+					}
+					let FileLines = data.toString().split('\n');
+					res.render('showlog', {
+						log_list : FileLines
+					});
+				});
+			}
+		});
+
 	}
 	else
 	{
 		res.redirect('/login');
 	}
 });
+
+piApp.get('/log_download', async(req, res) => {
+	if(UsersSessions.isSessionLegit(req.ip))
+	{
+		FileSystem.access(Paths.log_file, (err) => {
+			if(err)
+			{
+				res.render('info', {
+					info_page_msg : `Il file ${LogFileName} non è presente`
+				});
+			}
+			else
+			{
+				FileSystem.readFile(Paths.log_file, (err, fileData) => {
+					let LogFileSize = FileSystem.statSync(Paths.log_file).size;
+					res.setHeader('Content-Length', LogFileSize);
+					res.setHeader('Content-Type', 'text/plain');
+					res.setHeader('Content-Disposition', 'attachment; filename=Webserver.log');
+					res.write(fileData);
+					res.end();
+				});
+			}
+		});
+
+
+	}
+	else
+	{
+		res.redirect('/login');
+	}
+});
+
+piApp.get('/rm_download', async(req, res) => {
+	if(UsersSessions.isSessionLegit(req.ip))
+	{
+		FileSystem.access(Paths.log_file, (err) => {
+			if(err)
+			{
+				res.render('info', {
+					info_page_msg : `Il file ${LogFileName} non è presente`
+				});
+			}
+			else
+			{
+				FileSystem.unlink(Paths.log_file, (err) => {
+					if(err)
+					{
+						console.log(`Cancellazione del file ${LogFileName} non avvenuta`);
+						res.render('info', {
+							info_page_msg : `Non è stato possibile cancellare il file ${LogFileName}`
+						});
+					}
+				});
+				res.render('info', {
+					info_page_msg : `File ${LogFileName} cancellato`
+				});
+			}
+		});
+
+	}
+	else
+	{
+		res.redirect('/login');
+	}
+});
+
 
 piApp.get('/reboot', async (req, res) => {
 	if(UsersSessions.isSessionLegit(req.ip))
@@ -498,7 +625,7 @@ piApp.get('/reboot', async (req, res) => {
 });
 
 
-piApp.get('/shutdown', (req, res) => {
+piApp.get('/shutdown', async (req, res) => {
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
 		console.log("Spegnimento in corso");
@@ -516,7 +643,8 @@ piApp.get('/shutdown', (req, res) => {
 	
 });
 
-piApp.get('/network', (req, res) => {
+piApp.get('/network', async (req, res) => {
+	OldPage = 'Network';
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
 		let NetInfo = OsInfo.networkInterfaces();
@@ -540,7 +668,8 @@ piApp.get('/network', (req, res) => {
 	
 });
 
-piApp.get('/files_exp', (req, res) => {
+piApp.get('/files_exp', async (req, res) => {
+	// OldPage = 'FileExp';
 	if(UsersSessions.isSessionLegit(req.ip))
 	{
 		res.render('under_construction');
@@ -554,6 +683,9 @@ piApp.get('/files_exp', (req, res) => {
 	}
 });
 
+piApp.get('/back', (req, res) => {
+	res.redirect(BackPage(OldPage));
+});
 
 
 piApp.get('/logout', (req, res) => {
