@@ -10,6 +10,7 @@ const PiSessions = require(`./UsersClass`)
 
 const systemModule = require(`./System`);
 const networkModule = require(`./Network`);
+const fileExpModule = require(`./FileExp`);
 
 const EnableLog = false;
 
@@ -114,8 +115,12 @@ piApp.use(express.urlencoded({ extended: false }));
 
 // Routing per pagina system
 piApp.use(`/system`, systemModule);
+
 // Routing per pagina network
 piApp.use(`/network`, networkModule);
+
+// Routing per pagina file export
+piApp.use(`/file_exp`, fileExpModule);
 
 
 // Homepage Route
@@ -218,21 +223,6 @@ piApp.route('/index')
 			res.redirect('/login');
 		}
 	})
-
-piApp.get('/files_exp', async (req, res) => {
-	// OldPage = 'FileExp';
-	if(UsersSessions.isSessionLegit(req.ip))
-	{
-		res.render('under_construction');
-		// res.render('file_explorer', {
-		// 	file_name : ['lol1', 'lol2', 'lol3']
-		// });
-	}
-	else
-	{
-		res.redirect('/login');
-	}
-});
 
 piApp.get('/back', (req, res) => {
 	res.redirect(GetBackPage(OldPage));
