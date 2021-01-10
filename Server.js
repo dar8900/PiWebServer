@@ -1,23 +1,19 @@
 const express = require('express');
 const path = require('path');
-const uuid = require('uuid');
 const exphbs = require('express-handlebars');
 const SysCall = require(__dirname + '/SystemCall');
-const Users = require(__dirname + '/Res/loginTable');
 var os_utils = require('node-os-utils');
 const FileSystem = require('fs');
-const { default: Os } = require('node-os-utils/lib/os');
-const OsInfo = require('os');
-const net_stat = require('net-stat');
-const { __esModule } = require('uuid/dist/v1');
+
 
 const PiSessions = require(`./UsersClass`)
 
+const systemModule = require(`./System`);
 const networkModule = require(`./Network`);
 
 const EnableLog = false;
 
-const LogFileName = 'Webserver.log';
+const LogFileName = systemModule.logFileName;
 
 const Paths = {
 	log_file :  `/home/deo/Logs/${LogFileName}`,
@@ -80,7 +76,12 @@ function logToFile(LogMessage)
 
 }
 
-function BackPage()
+function SetBackPage(Page)
+{
+	OldPage = Page;
+}
+
+function GetBackPage()
 {
 	let RetPage = '';
 	switch (OldPage) {
@@ -110,6 +111,10 @@ piApp.set('view engine', 'handlebars');
 // Body Parser Middleware
 piApp.use(express.json());
 piApp.use(express.urlencoded({ extended: false }));
+
+// Routing per pagina system
+piApp.use(`/system`, systemModule);
+// Routing per pagina network
 piApp.use(`/network`, networkModule);
 
 
@@ -214,167 +219,6 @@ piApp.route('/index')
 		}
 	})
 
-
-
-piApp.get('/system', async (req, res) => {
-	OldPage = 'System';
-	if(UsersSessions.isSessionLegit(req.ip))
-	{
-		
-		res.render('system', {
-			os_arch : OsInfo.arch(),
-			os_platform : OsInfo.platform(),
-			os_type : OsInfo.type(),
-			os_release : OsInfo.release(),
-			os_name : 'Ubuntu server 20.04',
-			os_hostname : OsInfo.hostname(),
-			sys_message : ''
-		});
-	}
-	else
-	{
-		res.redirect('/login');
-	}
-	
-});
-
-piApp.get('/show_log', async (req, res) => {
-
-	if(UsersSessions.isSessionLegit(req.ip))
-	{
-		FileSystem.access(Paths.log_file, (err) => {
-			if(err)
-			{
-				res.render('info', {
-					info_page_msg : `Il file ${LogFileName} non è presente`
-				});
-			}
-			else
-			{
-				FileSystem.readFile(Paths.log_file, (err, data) => {
-					if(err)
-					{
-						throw err;
-					}
-					let FileLines = data.toString().split('\n');
-					res.render('showlog', {
-						log_list : FileLines
-					});
-				});
-			}
-		});
-
-	}
-	else
-	{
-		res.redirect('/login');
-	}
-});
-
-piApp.get('/log_download', async(req, res) => {
-	if(UsersSessions.isSessionLegit(req.ip))
-	{
-		FileSystem.access(Paths.log_file, (err) => {
-			if(err)
-			{
-				res.render('info', {
-					info_page_msg : `Il file ${LogFileName} non è presente`
-				});
-			}
-			else
-			{
-				FileSystem.readFile(Paths.log_file, (err, fileData) => {
-					let LogFileSize = FileSystem.statSync(Paths.log_file).size;
-					res.setHeader('Content-Length', LogFileSize);
-					res.setHeader('Content-Type', 'text/plain');
-					res.setHeader('Content-Disposition', 'attachment; filename=Webserver.log');
-					res.write(fileData);
-					res.end();
-				});
-			}
-		});
-
-
-	}
-	else
-	{
-		res.redirect('/login');
-	}
-});
-
-piApp.get('/rm_download', async(req, res) => {
-	if(UsersSessions.isSessionLegit(req.ip))
-	{
-		FileSystem.access(Paths.log_file, (err) => {
-			if(err)
-			{
-				res.render('info', {
-					info_page_msg : `Il file ${LogFileName} non è presente`
-				});
-			}
-			else
-			{
-				FileSystem.unlink(Paths.log_file, (err) => {
-					if(err)
-					{
-						console.log(`Cancellazione del file ${LogFileName} non avvenuta`);
-						res.render('info', {
-							info_page_msg : `Non è stato possibile cancellare il file ${LogFileName}`
-						});
-					}
-				});
-				res.render('info', {
-					info_page_msg : `File ${LogFileName} cancellato`
-				});
-			}
-		});
-
-	}
-	else
-	{
-		res.redirect('/login');
-	}
-});
-
-
-piApp.get('/reboot', async (req, res) => {
-	if(UsersSessions.isSessionLegit(req.ip))
-	{
-		console.log("Reboot in corso");
-		logToFile('Richiesta di riavvio');
-		res.render('system', {
-			sys_message : "Riavvio in corso..."
-		});
-		UsersSessions.delAllSessions();
-		const Reboot = require('child_process').spawn('/home/deo/Homeshare/PiserverJS/Scripts/PiReboot.sh');
-	}
-	else
-	{
-		res.redirect('/login');
-	}
-	
-});
-
-
-piApp.get('/shutdown', async (req, res) => {
-	if(UsersSessions.isSessionLegit(req.ip))
-	{
-		console.log("Spegnimento in corso");
-		logToFile('Richiesta di spegnimento');
-		res.render('system', {
-			sys_message : "Spegnimento in corso..."
-		});
-		UsersSessions.delAllSessions();
-		const Reboot = require('child_process').spawn('/home/deo/Homeshare/PiserverJS/Scripts/PiShutdown.sh');
-	}
-	else
-	{
-		res.redirect('/login');
-	}
-	
-});
-
-
 piApp.get('/files_exp', async (req, res) => {
 	// OldPage = 'FileExp';
 	if(UsersSessions.isSessionLegit(req.ip))
@@ -391,7 +235,7 @@ piApp.get('/files_exp', async (req, res) => {
 });
 
 piApp.get('/back', (req, res) => {
-	res.redirect(BackPage(OldPage));
+	res.redirect(GetBackPage(OldPage));
 });
 
 
@@ -416,4 +260,6 @@ piApp.listen(PORT.SERVER_PORT, () => {
 });
 
 exports.userSessions =  UsersSessions;
-exports.oldPage = OldPage;
+exports.paths = Paths;
+exports.logToFile = logToFile;
+exports.setOldPage = SetBackPage;

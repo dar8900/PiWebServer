@@ -12,7 +12,7 @@ net_router.use((req, res, next) => {
   });
 
   net_router.get('/', async (req, res) => {
-
+    MainApp.setOldPage(`Network`);
 	if(MainApp.userSessions.isSessionLegit(req.ip))
 	{
 		let NetInfo = OsInfo.networkInterfaces();
