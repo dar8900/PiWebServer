@@ -3,5 +3,7 @@
         {{info_page_msg}}
     </h2>
     <br>
-    <a href="/back" class="btn btn-primary"><b>Indietro</b></a>
+    {{#if back_button}}
+        <a href="/back" class="btn btn-primary"><b>Indietro</b></a>
+    {{/if}}
 </div>

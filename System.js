@@ -4,6 +4,7 @@ const OsInfo = require('os');
 const FileSystem = require('fs');
 
 const MainApp = require(`./Server`);
+const SysCall = require(`./SystemCall`);
 const LogFileName = 'Webserver.log';
 
 var OldPage = ``;
@@ -45,7 +46,8 @@ sys_router.get('/show_log', async (req, res) => {
 			if(err)
 			{
 				res.render('info', {
-					info_page_msg : `Il file ${LogFileName} non è presente`
+					info_page_msg : `Il file ${LogFileName} non è presente`,
+					back_button : true
 				});
 			}
 			else
@@ -77,7 +79,8 @@ sys_router.get('/log_download', async(req, res) => {
 			if(err)
 			{
 				res.render('info', {
-					info_page_msg : `Il file ${LogFileName} non è presente`
+					info_page_msg : `Il file ${LogFileName} non è presente`,
+					back_button : true
 				});
 			}
 			else
@@ -108,7 +111,8 @@ sys_router.get('/rm_download', async(req, res) => {
 			if(err)
 			{
 				res.render('info', {
-					info_page_msg : `Il file ${LogFileName} non è presente`
+					info_page_msg : `Il file ${LogFileName} non è presente`,
+					back_button : true
 				});
 			}
 			else
@@ -118,12 +122,14 @@ sys_router.get('/rm_download', async(req, res) => {
 					{
 						console.log(`Cancellazione del file ${LogFileName} non avvenuta`);
 						res.render('info', {
-							info_page_msg : `Non è stato possibile cancellare il file ${LogFileName}`
+							info_page_msg : `Non è stato possibile cancellare il file ${LogFileName}`,
+							back_button : true
 						});
 					}
 				});
 				res.render('info', {
-					info_page_msg : `File ${LogFileName} cancellato`
+					info_page_msg : `File ${LogFileName} cancellato`,
+					back_button : true
 				});
 			}
 		});
@@ -136,16 +142,18 @@ sys_router.get('/rm_download', async(req, res) => {
 });
 
 
+
 sys_router.get('/reboot', async (req, res) => {
 	if(MainApp.userSessions.isSessionLegit(req.ip))
 	{
 		console.log("Reboot in corso");
 		MainApp.logToFile('Richiesta di riavvio');
-		res.render('system', {
-			sys_message : "Riavvio in corso..."
+		res.render('info', {
+			info_page_msg : "Riavvio in corso...",
+			back_button : false
 		});
-		UsersSessions.delAllSessions();
-		const Reboot = require('child_process').spawn('/home/deo/Homeshare/PiserverJS/Scripts/PiReboot.sh');
+		MainApp.userSessions.delAllSessions();
+		SysCall.execCommand(`/usr/sbin/reboot`, true);
 	}
 	else
 	{
@@ -153,18 +161,18 @@ sys_router.get('/reboot', async (req, res) => {
 	}
 	
 });
-
 
 sys_router.get('/shutdown', async (req, res) => {
 	if(MainApp.userSessions.isSessionLegit(req.ip))
 	{
 		console.log("Spegnimento in corso");
-		MainApp.logToFile('Richiesta di spegnimento');
-		res.render('system', {
-			sys_message : "Spegnimento in corso..."
+		MainApp.logToFile('Richiesta di Spegnimento');
+		res.render('info', {
+			info_page_msg : "Spegnimento in corso...",
+			back_button : false
 		});
-		UsersSessions.delAllSessions();
-		const Reboot = require('child_process').spawn('/home/deo/Homeshare/PiserverJS/Scripts/PiShutdown.sh');
+		MainApp.userSessions.delAllSessions();
+		SysCall.execCommand(`/usr/sbin/poweroff`, true);
 	}
 	else
 	{
@@ -172,6 +180,24 @@ sys_router.get('/shutdown', async (req, res) => {
 	}
 	
 });
+
+// sys_router.get('/shutdown', async (req, res) => {
+// 	if(MainApp.userSessions.isSessionLegit(req.ip))
+// 	{
+// 		console.log("Spegnimento in corso");
+// 		MainApp.logToFile('Richiesta di spegnimento');
+// 		res.render('system', {
+// 			sys_message : "Spegnimento in corso..."
+// 		});
+// 		UsersSessions.delAllSessions();
+// 		const Reboot = require('child_process').spawn('/home/deo/Homeshare/PiserverJS/Scripts/PiShutdown.sh');
+// 	}
+// 	else
+// 	{
+// 		res.redirect('/login');
+// 	}
+	
+// });
 
 module.exports = sys_router;
 exports.sys_oldpage = OldPage;
