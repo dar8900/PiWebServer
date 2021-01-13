@@ -199,6 +199,7 @@ sys_router.get('/shutdown', async (req, res) => {
 	
 // });
 
-module.exports = sys_router;
+// module.exports = sys_router;
+exports.system_router = sys_router;
 exports.sys_oldpage = OldPage;
 exports.logFileName = LogFileName;

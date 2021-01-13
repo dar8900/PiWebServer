@@ -5,11 +5,11 @@
     <li class="nav-item">
         <a class="nav-link" href="/system">Sistema</a>
     </li>
-    <li class="nav-item">
+    <li class="nav-item">   
         <a class="nav-link" href="/network">Network</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="/files_exp">Files</a>
+        <a class="nav-link" href="/files_exp"><b>Files</b></a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="/logout" tabindex="-1">Logout</a>
@@ -22,18 +22,29 @@
 <br> 
 
 <div class="container mt-4 text-center">
-    <table class="table-light">
+    <table class="table">
         <thead>
-            <tr class="table-info"> 
-                <th scope="col" class="table-info">Nomi dei file </th>
-                {{!-- <th scope="col" class="table-info">Dimensione </th> --}}
+            <tr> 
+                <th scope="col" class="table-info">Files </th>
+                <th scope="col" class="table-info">Dimensione </th>
+                <th scope="col" class="table-info">Ultima modifica</th>
+                <th scope="col" class="table-info">Data creazione</th>
             </tr>
         </thead>
         <tbody>
         {{# each file_name}}
-            <tr class="table-info">
-                <td>
-                    {{this}}
+            <tr>
+                <td scope="row">
+                    <a class="btn btn-link" href="/files_exp/{{this.name}}" role="button">{{this.name}}</a>
+                </td>
+                <td scope="row">
+                    {{this.dim}}
+                </td>
+                <td scope="row">
+                    {{this.last_mod}}
+                </td>
+                <td scope="row">
+                    {{this.creation_time}}
                 </td>
             </tr>
         {{/each}}
