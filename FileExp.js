@@ -34,12 +34,34 @@ function getSizeStr(Dim)
 	return DimStr;
 }
 
+function findFilenameIndex(IncomingReq)
+{
+	let FileFounded = false;
+	let FileNameIndex = -1;
+	for(FileNameIndex = 0; FileNameIndex < FileNames.name.length; FileNameIndex++)
+	{
+		if(IncomingReq.params.sub_item === `${FileNames.name[FileNameIndex]}`)
+		{
+			FileFounded = true;
+			break;
+		}
+	}
+	if(!FileFounded)
+	{
+		FileNameIndex = -1;
+	}
+	return FileNameIndex;
+}
 
 // file_exp_router.use((req, res, next) => {
 //     next();
 //   });
 
 file_exp_router.use(`/${MainFolder}/:sub_item`, function(req, res, next) {
+	next();
+  });
+  
+file_exp_router.use(`/${MainFolder}/cancel/:sub_item`, function(req, res, next) {
 	next();
   });
 
@@ -112,24 +134,7 @@ file_exp_router.get(`/${MainFolder}`, async (req, res) => {
 	}
 });
 
-function findFilenameIndex(IncomingReq)
-{
-	let FileFounded = false;
-	let FileNameIndex = -1;
-	for(FileNameIndex = 0; FileNameIndex < FileNames.name.length; FileNameIndex++)
-	{
-		if(IncomingReq.params.sub_item === `${FileNames.name[FileNameIndex]}`)
-		{
-			FileFounded = true;
-			break;
-		}
-	}
-	if(!FileFounded)
-	{
-		FileNameIndex = -1;
-	}
-	return FileNameIndex;
-}
+
 
 file_exp_router.get(`/${MainFolder}/:sub_item`, async (req, res) => {
 	if(MainApp.userSessions.isSessionLegit(req.ip))
@@ -182,6 +187,37 @@ file_exp_router.get(`/${MainFolder}/:sub_item`, async (req, res) => {
 	else
 	{
 		res.redirect('/login');
+	}
+});
+
+file_exp_router.get(`/${MainFolder}/cancel/:sub_item`, async (req, res) => {
+	if(MainApp.userSessions.isSessionLegit(req.ip))
+	{
+		let FileIndex = findFilenameIndex(req);
+		if(FileIndex >= 0)
+		{
+			FileSystem.unlink(`${MainApp.paths.file_exp_dir}/${FileNames.name[FileIndex]}`, (err) => {
+				if(err)
+				{
+					res.render(`info`, {
+						info_page_msg : `File "${FileNames.name[FileIndex]}" non cancellato`,
+						back_button : true
+					});
+				} 
+				MainApp.logToFile(`Cancellato il file "${FileNames.name[FileIndex]}"`);
+				res.redirect(`/files_exp`);
+			});
+		}
+		else
+		{
+			res.render(`not_found`, {
+				title: "404 cancel not found"
+			});
+		}
+	}
+	else
+	{
+		res.redirect(`/login`);
 	}
 });
 

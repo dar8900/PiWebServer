@@ -25,12 +25,24 @@
 </div>
 <br> 
 
+<div class="container mt-4 text-center">
+    <form action="/files_exp/upload" method="POST" enctype="multipart/form-data">
+        <div class="input-group mb-3 text_center">
+            <input type="file" class="form-control" id="file_upload" required>
+            <button type="submit" class="btn btn-light btn-outline-secondary">Upload file</button>
+            {{!-- <label class="input-group-text" for="file_upload">Upload file</label> --}}
+        </div>
+    </form>
+    
+</div>
+<br> 
 
 <div class="container mt-4 text-center">
     <table class="table">
         <thead>
             <tr> 
                 <th scope="col" class="table-info">Files </th>
+                <th scope="col" class="table-info"></th>
                 <th scope="col" class="table-info">Dimensione </th>
                 <th scope="col" class="table-info">Tipo</th>
                 <th scope="col" class="table-info">Ultima modifica</th>
@@ -43,6 +55,9 @@
                     <a class="btn btn-link {{this.link_status}}" href="/files_exp/Downloads/{{this.name}}" role="button">{{this.name}}</a>
                 </td>
                 <td scope="row">
+                    <a class="btn btn-danger {{this.link_status}}" href="/files_exp/Downloads/cancel/{{this.name}}" role="button">Cancella</a>
+                </td>
+                <td scope="row">
                     {{this.dim}}
                 </td>
                 <td scope="row">
@@ -53,7 +68,7 @@
                 </td>
             </tr>
         {{/each}}
-        </tbody>
+        </tbody>    
     </table>
 </div>
 
