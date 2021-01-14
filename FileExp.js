@@ -4,7 +4,7 @@ const OsInfo = require('os');
 const FileSystem = require('fs');
 const MainApp = require(`./Server`);
 const MainFolder = `Downloads`;
-var FileNames = [];
+var FileNames = {is_dir : [] , name : []};
 
 function getSizeStr(Dim)
 {
@@ -35,15 +35,23 @@ function getSizeStr(Dim)
 }
 
 
-file_exp_router.use((req, res, next) => {
-    // console.log(`Dentro la route del modulo File exp`);
-    next();
+// file_exp_router.use((req, res, next) => {
+//     next();
+//   });
+
+file_exp_router.use(`/${MainFolder}/:sub_item`, function(req, res, next) {
+	next();
   });
 
 file_exp_router.get('/', async (req, res) => {
+	res.redirect(`/files_exp/${MainFolder}`);
+});
+
+file_exp_router.get(`/${MainFolder}`, async (req, res) => {
 	MainApp.setOldPage(`FileExp`);
 	if(MainApp.userSessions.isSessionLegit(req.ip))
 	{
+		let ActualFolder = MainFolder;
 		FileSystem.readdir(MainApp.paths.file_exp_dir, (err, filesNames) => {
 			if(err)
 			{
@@ -56,21 +64,41 @@ file_exp_router.get('/', async (req, res) => {
 			else
 			{
 				let FilesDes = []; 
-				FileNames = [];
+				FileNames.name = [];
+				FileNames.is_dir = [];
 				for(let i = 0; i < filesNames.length; i++)
 				{
-					FileSystem.stat(`${MainApp.paths.file_exp_dir}/${filesNames[i]}`, (err, stat) => {
-						FileNames.push(filesNames[i]);
-						FilesDes.push({name : filesNames[i], 
-									dim : getSizeStr(stat.size),
-									last_mod : stat.birthtime,
-									creation_time: stat.mtime
-								});
+					FileSystem.stat(`${MainApp.paths.file_exp_dir}/${filesNames[i]}`, (err, file_stat) => {
+						if(!file_stat.isDirectory())
+						{
+							FileNames.name.push(filesNames[i]);
+							FileNames.is_dir.push(false);
+							FilesDes.push({
+										link_status : ``,
+										name : filesNames[i], 
+										dim : getSizeStr(file_stat.size),
+										type: `file`,
+										last_mod : file_stat.birthtime
+									});
+						}
+						else
+						{
+							FileNames.name.push(filesNames[i]);
+							FileNames.is_dir.push(true);
+							FilesDes.push({
+										link_status : `disabled`,
+										name : filesNames[i], 
+										dim : `-`,
+										type: `cartella`,
+										last_mod : file_stat.birthtime
+									});
+						}
 					});
 					
 				}
 				res.render('file_explorer', {
-					file_name : FilesDes
+					dir_name : `Cartella: ${ActualFolder}`,
+					file_name : FilesDes.sort()
 				});
 			}
 		});
@@ -84,38 +112,70 @@ file_exp_router.get('/', async (req, res) => {
 	}
 });
 
-file_exp_router.get('/*', async (req, res) => {
+function findFilenameIndex(IncomingReq)
+{
+	let FileFounded = false;
+	let FileNameIndex = -1;
+	for(FileNameIndex = 0; FileNameIndex < FileNames.name.length; FileNameIndex++)
+	{
+		if(IncomingReq.params.sub_item === `${FileNames.name[FileNameIndex]}`)
+		{
+			FileFounded = true;
+			break;
+		}
+	}
+	if(!FileFounded)
+	{
+		FileNameIndex = -1;
+	}
+	return FileNameIndex;
+}
+
+file_exp_router.get(`/${MainFolder}/:sub_item`, async (req, res) => {
 	if(MainApp.userSessions.isSessionLegit(req.ip))
 	{
-		let FileFounded = false;
-		let FileNameIndex = 0
-		for(FileNameIndex = 0; FileNameIndex < FileNames.length; FileNameIndex++)
+		let FileNameIndex = findFilenameIndex(req);
+		if(FileNameIndex >= 0)
 		{
-			if(req.path === `/${FileNames[FileNameIndex]}`)
+			if(!FileNames.is_dir[FileNameIndex])
 			{
-				FileFounded = true;
-				break;
+				FileSystem.readFile(`${MainApp.paths.file_exp_dir}/${FileNames.name[FileNameIndex]}`, (err, fileData) => {
+					let options = {
+						root: `${MainApp.paths.file_exp_dir}`,
+						dotfiles: 'ignore',
+						headers: {
+
+							'Content-Disposition' : `attachment; filename=${FileNames.name[FileNameIndex]}`,
+						}
+					}
+					
+					res.sendFile(FileNames.name[FileNameIndex], options, function (err) {
+							if(err) 
+							{
+								res.render(`info`, {
+									info_page_msg : `File "${FileNames.name[FileNameIndex]}" non inviato`,
+									back_button : true
+								});
+								console.log(`Errore invio file: ${err}`);
+							} 
+							else 
+							{
+								MainApp.logToFile(`Richiesta di scaricamento del file "${FileNames.name[FileNameIndex]}"`);
+							}
+						})
+				});
 			}
-		}
-		if(FileFounded)
-		{
-			FileSystem.readFile(`${MainApp.paths.file_exp_dir}/${FileNames[FileNameIndex]}`, (err, fileData) => {
-				let FileSize = FileSystem.statSync(`${MainApp.paths.file_exp_dir}/${FileNames[FileNameIndex]}`).size;
-				res.setHeader('Content-Length', FileSize);
-				// res.setHeader('Content-Type', 'text/plain');
-				res.setHeader('Content-Disposition', `attachment; filename=${FileNames[FileNameIndex]}`);
-				res.write(fileData);
-				res.end();
-			});
-			// res.render(`info`, {
-			// 	info_page_msg : `File ${FileNames[FileNameIndex]} trovato`,
-			// 	back_button : true
-			// });
+			else
+			{
+				res.render(`not_found`, {
+					title: "404 file not found"
+				});
+			}
 		}
 		else
 		{
 			res.render(`not_found`, {
-				title: "404 not found"
+				title: "404 file not found"
 			});
 		}
 	}
