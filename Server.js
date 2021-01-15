@@ -18,6 +18,7 @@ const LogFileName = systemModule.logFileName;
 
 const Paths = {
 	log_file :  `/home/deo/Logs/${LogFileName}`,
+	file_exp_dir : `/home/deo/${fileExpModule.dir_name}`,
 	favicon: path.join(__dirname, 'Res/server_icon.png'),
 	actual_time_js : path.join(__dirname, 'WebJS/actualTime.js'),
 	index_js : path.join(__dirname, 'WebJS/index.js')
@@ -95,9 +96,9 @@ function GetBackPage()
 		case `Network`:
 			RetPage = '/network';
 			break;
-		// case `FileExp`:
-		// 	RetPage = 'files_exp';
-		// 	break;
+		case `FileExp`:
+			RetPage = '/files_exp';
+			break;
 		default:
 			RetPage = '/index';
 			break;
@@ -114,13 +115,13 @@ piApp.use(express.json());
 piApp.use(express.urlencoded({ extended: false }));
 
 // Routing per pagina system
-piApp.use(`/system`, systemModule);
+piApp.use(`/system`, systemModule.system_router);
 
 // Routing per pagina network
-piApp.use(`/network`, networkModule);
+piApp.use(`/network`, networkModule.network_router);
 
 // Routing per pagina file export
-piApp.use(`/file_exp`, fileExpModule);
+piApp.use(`/files_exp`, fileExpModule.file_exp_router);
 
 
 // Homepage Route

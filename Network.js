@@ -36,4 +36,4 @@ net_router.use((req, res, next) => {
 	
 });
 
-module.exports = net_router;
+exports.network_router = net_router;
