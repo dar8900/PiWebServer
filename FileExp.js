@@ -1,10 +1,26 @@
 var express = require('express');
 var file_exp_router = express.Router();
+
 const OsInfo = require('os');
 const FileSystem = require('fs');
 const MainApp = require(`./Server`);
 const MainFolder = `Downloads`;
+const MainFolderPath = `/home/deo/Downloads`;
 var FileNames = {is_dir : [] , name : []};
+
+var multer  = require('multer');
+// var upload = multer({ dest: `${MainFolderPath}` });
+
+var uploadStorage = multer.diskStorage({
+	destination: function (req, file, cb) {
+	  cb(null, `${MainFolderPath}`);
+	},
+	filename: function (req, file, cb) {
+	  cb(null, file.originalname);
+	}
+});
+
+var upload = multer({ storage: uploadStorage });
 
 function getSizeStr(Dim)
 {
@@ -65,8 +81,16 @@ file_exp_router.use(`/${MainFolder}/cancel/:sub_item`, function(req, res, next) 
 	next();
   });
 
+
 file_exp_router.get('/', async (req, res) => {
-	res.redirect(`/files_exp/${MainFolder}`);
+	if(MainApp.userSessions.isSessionLegit(req.ip))
+	{
+		res.redirect(`/files_exp/${MainFolder}`);
+	}
+	else
+	{
+		res.redirect(`/login`);
+	}
 });
 
 file_exp_router.get(`/${MainFolder}`, async (req, res) => {
@@ -103,18 +127,18 @@ file_exp_router.get(`/${MainFolder}`, async (req, res) => {
 										last_mod : file_stat.birthtime
 									});
 						}
-						else
-						{
-							FileNames.name.push(filesNames[i]);
-							FileNames.is_dir.push(true);
-							FilesDes.push({
-										link_status : `disabled`,
-										name : filesNames[i], 
-										dim : `-`,
-										type: `cartella`,
-										last_mod : file_stat.birthtime
-									});
-						}
+						// else
+						// {
+						// 	FileNames.name.push(filesNames[i]);
+						// 	FileNames.is_dir.push(true);
+						// 	FilesDes.push({
+						// 				link_status : `disabled`,
+						// 				name : filesNames[i], 
+						// 				dim : `-`,
+						// 				type: `cartella`,
+						// 				last_mod : file_stat.birthtime
+						// 			});
+						// }
 					});
 					
 				}
@@ -134,7 +158,14 @@ file_exp_router.get(`/${MainFolder}`, async (req, res) => {
 	}
 });
 
-
+file_exp_router.post(`/upload`, upload.single(`file_to_upload`), (req, res, next) => {
+	let Filename = req.file.originalname;
+	MainApp.logToFile(`Caricato il file "${Filename}" nella cartella ${MainFolderPath}`);
+	res.render(`info`, {
+		info_page_msg : `File "${Filename}" caricato`,
+		back_button : true
+	});
+});
 
 file_exp_router.get(`/${MainFolder}/:sub_item`, async (req, res) => {
 	if(MainApp.userSessions.isSessionLegit(req.ip))

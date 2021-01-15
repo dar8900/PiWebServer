@@ -28,9 +28,8 @@
 <div class="container mt-4 text-center">
     <form action="/files_exp/upload" method="POST" enctype="multipart/form-data">
         <div class="input-group mb-3 text_center">
-            <input type="file" class="form-control" id="file_upload" required>
+            <input type="file" class="form-control" id="file_upload" name="file_to_upload" required>
             <button type="submit" class="btn btn-light btn-outline-secondary">Upload file</button>
-            {{!-- <label class="input-group-text" for="file_upload">Upload file</label> --}}
         </div>
     </form>
     
